@@ -3433,7 +3433,7 @@ function handleQRData(data) {
           const ur = S.urDecoder.resultUR();
           const payload = ur.decodeCBOR();
           stopCamera();
-          onPsbtReceived(payload);
+          handleURPayload(payload);
         } catch (e) {
           stopCamera();
           updateScanStatus('CBOR error: ' + (e.message || e));
@@ -3496,22 +3496,47 @@ function cancelScan() {
   render();
 }
 
+// ── UR Payload Router ──────────────────────────────
+
+function handleURPayload(payload) {
+  const bytes = payload instanceof Uint8Array ? payload : new Uint8Array(payload);
+
+  // PSBT magic: 0x70736274ff ("psbt" + 0xff)
+  if (bytes.length >= 5 && bytes[0] === 0x70 && bytes[1] === 0x73 && bytes[2] === 0x62 && bytes[3] === 0x74 && bytes[4] === 0xff) {
+    onPsbtReceived(bytes);
+    return;
+  }
+
+  // Try UTF-8 text → BMS JSON
+  try {
+    const text = new TextDecoder().decode(bytes);
+    const json = JSON.parse(text);
+    if (json.type === 'bms' && typeof json.message === 'string') {
+      onBmsReceived(json);
+      return;
+    }
+  } catch { /* not JSON */ }
+
+  showModal(t('psbtParseError') + 'Unknown UR payload format');
+}
+
 // ── PSBT Parsing ───────────────────────────────────
 
 function onPsbtReceived(psbtBytes) {
   try {
-    const tx = Transaction.fromPSBT(psbtBytes);
-    const parsed = parseTxDetails(tx, psbtBytes);
+    // Ensure Uint8Array (decodeCBOR may return Buffer)
+    const bytes = psbtBytes instanceof Uint8Array ? psbtBytes : new Uint8Array(psbtBytes);
+    const tx = Transaction.fromPSBT(bytes);
+    const parsed = parseTxDetails(tx, bytes);
     S.parsedTx = parsed;
     S.screen = 'confirm-tx';
     S.tab = 'sign';
     render();
   } catch (e) {
-    S.screen = 'scan';
+    // Show error without restarting camera (scan screen auto-starts camera)
+    S.screen = 'home';
     S.tab = 'sign';
-    S.urProgress = t('psbtParseError') + e.message;
-    S.urDecoder = new URDecoder();
-    render();
+    showModal(t('psbtParseError') + e.message);
   }
 }
 
