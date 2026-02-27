@@ -1,6 +1,6 @@
 {
   "name": "BitClutch Signer",
-  "short_name": "Signer",
+  "short_name": "BitClutch Signer",
   "description": "Air-gapped Bitcoin signing device",
   "start_url": "/",
   "display": "standalone",
