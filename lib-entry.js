@@ -2,11 +2,6 @@
 // Bundled into lib/bundle.js as IIFE → window.SignerLib
 // App logic (app.js) accesses these via window.SignerLib
 
-// Buffer polyfill — bc-ur uses Node Buffer internally;
-// esbuild bundles the polyfill but doesn't expose it globally.
-import { Buffer } from 'buffer';
-if (typeof globalThis.Buffer === 'undefined') globalThis.Buffer = Buffer;
-
 // Bitcoin transaction signing (PSBT, Miniscript)
 export { Transaction, p2wsh, p2wpkh, p2sh } from '@scure/btc-signer';
 

@@ -1,9 +1,9 @@
 {
   "version": "0.2.0",
-  "generated": "2026-02-27T20:18:47.286Z",
+  "generated": "2026-02-27T20:23:12.071Z",
   "files": {
-    "bitclutch-signer.html": "64b09d1b483d39b09eb1a39be6dff2f896f25b164572e8166aea1951e1c27a2c",
-    "app.js": "0fd17d048cce204811200240c82614c1d63e7c9337698a42b1452f15971c126b",
-    "lib/bundle.js": "445457e62281c3275fe9ee6b66f41811447843ffd7b0a5ac9591c7ef850dd6be"
+    "bitclutch-signer.html": "08cd9a38dedf4aad39321fe51c877c785a408c36bf21cdfbb725b10a15941f60",
+    "app.js": "ab3ccd84fa337adedf41ea2657c3997d57f85a25b06f4f34d7eb1fa293810dfc",
+    "lib/bundle.js": "08f1fa5b879902b6be2ed088ea269f87bbd7a84f2eacbf988e5cff34d3afbe50"
   }
 }

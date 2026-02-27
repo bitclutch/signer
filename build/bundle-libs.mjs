@@ -15,6 +15,7 @@ await build({
   globalName: 'SignerLib',
   platform: 'browser',
   target: ['es2020'],
+  inject: [join(__dirname, 'buffer-shim.js')],  // Provide Buffer to bc-ur without global pollution
   define: {
     'process.env.NODE_ENV': '"production"',
     'process.env.NODE_DEBUG': 'undefined',
