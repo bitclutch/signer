@@ -3517,7 +3517,7 @@ function handleURPayload(payload) {
     }
   } catch { /* not JSON */ }
 
-  showModal(t('psbtParseError') + 'Unknown UR payload format');
+  showAlert(t('psbtParseError'), 'Unknown UR payload format');
 }
 
 // ── PSBT Parsing ───────────────────────────────────
@@ -3536,7 +3536,7 @@ function onPsbtReceived(psbtBytes) {
     // Show error without restarting camera (scan screen auto-starts camera)
     S.screen = 'home';
     S.tab = 'sign';
-    showModal(t('psbtParseError') + e.message);
+    showAlert(t('psbtParseError'), e.message);
   }
 }
 
