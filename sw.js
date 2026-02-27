@@ -1,8 +1,8 @@
 // sw.js — Service Worker for offline caching
 // BitClutch Signer PWA — cache all assets on install, serve from cache
 
-// IMPORTANT: bump this version when app.js or lib/bundle.js changes
-const CACHE_NAME = 'bitclutch-signer-v0.2.1';
+// Auto-updated by build/compute-hashes.mjs — do not edit manually
+const CACHE_NAME = 'bitclutch-signer-b62b3335';
 const ASSETS = [
   '/',
   '/index.html',

@@ -32,6 +32,17 @@ const appHash = sha256(appPath);
 // Compute standalone HTML hash (built by build-html step before this)
 const standaloneHash = sha256(join(root, 'bitclutch-signer.html'));
 
+// Auto-update SW cache name with content hash (app.js + bundle.js)
+const swPath = join(root, 'sw.js');
+const contentHash = createHash('sha256').update(appHash + libHash).digest('hex').slice(0, 8);
+let swJs = readFileSync(swPath, 'utf-8');
+swJs = swJs.replace(
+  /const CACHE_NAME = '[^']*';/,
+  `const CACHE_NAME = 'bitclutch-signer-${contentHash}';`
+);
+writeFileSync(swPath, swJs, 'utf-8');
+console.log(`sw.js       cache:  bitclutch-signer-${contentHash}`);
+
 // Write hashes.json for external verification
 const hashesPath = join(root, 'hashes.json');
 const version = appJs.match(/const APP_VERSION = '([^']+)'/)?.[1] || 'unknown';
