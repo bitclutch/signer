@@ -55,7 +55,7 @@ const LOCK_TIMEOUT = 5 * 60 * 1000; // 5 min
 const PBKDF2_ITERATIONS = 600000;
 // Build-time SHA-256 hash for lib/bundle.js (inserted by compute-hashes.mjs)
 // NOTE: app.js cannot contain its own hash (circular). Its hash is in hashes.json.
-const BUILD_LIB_HASH = '2d24857548d649d659fcfafe2fac90ca08558b9dcde3d0c9aa68a130484e5859';
+const BUILD_LIB_HASH = '445457e62281c3275fe9ee6b66f41811447843ffd7b0a5ac9591c7ef850dd6be';
 const APP_VERSION = '0.2.0';
 const $ = (id) => document.getElementById(id);
 const $screen = () => $('screen');
