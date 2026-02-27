@@ -3540,15 +3540,9 @@ function escapeHtml(s) {
 
 function showXpubQR() {
   const xpub = localStorage.getItem('signer-xpub');
-  const fpNum = parseInt(localStorage.getItem('signer-fp') || '0', 10);
   if (!xpub) return;
-  const data = JSON.stringify({
-    type: 'bitclutch-xpub',
-    xpub,
-    fingerprint: fpNum.toString(16).padStart(8, '0'),
-    network: S.network,
-    account_path: S.network === 'main' ? "m/84'/0'/0'" : "m/84'/1'/0'",
-  });
+  // Encode xpub only (not JSON) — smaller QR, much easier for cameras to scan.
+  // Frontend's handleQrScanned() accepts both plain xpub and JSON format.
   const el = $screen();
   el.innerHTML = `
     <div class="card text-center">
@@ -3558,7 +3552,7 @@ function showXpubQR() {
     </div>
     <button class="btn btn-secondary" data-action="goHome">${t('back')}</button>`;
   const container = $('xpub-qr');
-  container.appendChild(generateQRCanvas(data, 260));
+  container.appendChild(generateQRCanvas(xpub, 300));
 }
 
 function toggleNetwork() {
