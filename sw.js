@@ -2,7 +2,7 @@
 // BitClutch Signer PWA — cache all assets on install, serve from cache
 
 // IMPORTANT: bump this version when app.js or lib/bundle.js changes
-const CACHE_NAME = 'bitclutch-signer-v0.2.0';
+const CACHE_NAME = 'bitclutch-signer-v0.2.1';
 const ASSETS = [
   '/',
   '/index.html',
