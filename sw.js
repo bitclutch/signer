@@ -2,7 +2,7 @@
 // BitClutch Signer PWA — cache all assets on install, serve from cache
 
 // Auto-updated by build/compute-hashes.mjs — do not edit manually
-const CACHE_NAME = 'bitclutch-signer-c64d4b1a';
+const CACHE_NAME = 'bitclutch-signer-e2d85668';
 const ASSETS = [
   '/',
   '/index.html',

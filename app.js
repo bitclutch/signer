@@ -3507,15 +3507,23 @@ function handleURPayload(payload) {
     return;
   }
 
-  // Try UTF-8 text → BMS JSON
+  // Try UTF-8 text → BMS JSON wrapper or plain text message
   try {
     const text = new TextDecoder().decode(bytes);
-    const json = JSON.parse(text);
-    if (json.type === 'bms' && typeof json.message === 'string') {
-      onBmsReceived(json);
+    // Try JSON wrapper: {"type":"bms","message":"...","index":0}
+    try {
+      const json = JSON.parse(text);
+      if (json.type === 'bms' && typeof json.message === 'string') {
+        onBmsReceived(json);
+        return;
+      }
+    } catch { /* not JSON — treat as plain text BMS */ }
+    // Plain text from frontend (planDoc sent via encodeTextToUR)
+    if (text.length > 0) {
+      onBmsReceived({ message: text, index: 0 });
       return;
     }
-  } catch { /* not JSON */ }
+  } catch { /* not valid UTF-8 */ }
 
   showAlert(t('psbtParseError'), 'Unknown UR payload format');
 }
