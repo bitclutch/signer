@@ -167,8 +167,9 @@ const I18N = {
     signingFailed: 'Signing failed: ',
     // Show QR
     signedPsbt: 'Signed PSBT',
-    showQRDesc: 'Show this QR to your BitClutch app to broadcast.',
-    done: 'Done',
+    showQRDesc: 'Let your BitClutch app scan this QR code to broadcast the transaction.',
+    scanComplete: 'Scan Complete',
+    scanSignatureDesc: 'Let your BitClutch app scan this QR code to submit the signature.',
     singleQR: 'single QR',
     fountainKeepShowing: 'fountain code — keep showing',
     frame: 'Frame',
@@ -184,6 +185,7 @@ const I18N = {
     sigBase64: 'Signature (base64)',
     tapToCopy: 'Tap to copy',
     copySig: 'Copy signature',
+    sha256: 'SHA-256',
     // Settings
     settings: 'Settings',
     version: 'Version',
@@ -375,8 +377,9 @@ const I18N = {
     sign: '서명',
     signingFailed: '서명 실패: ',
     signedPsbt: '서명된 PSBT',
-    showQRDesc: 'BitClutch 앱에 이 QR을 보여주어 브로드캐스트하세요.',
-    done: '완료',
+    showQRDesc: 'BitClutch 앱으로 이 QR 코드를 스캔하여 거래를 브로드캐스트하세요.',
+    scanComplete: '스캔 완료',
+    scanSignatureDesc: 'BitClutch 앱으로 이 QR 코드를 스캔하여 서명을 제출하세요.',
     singleQR: '단일 QR',
     fountainKeepShowing: '파운틴 코드 — 계속 보여주세요',
     frame: '프레임',
@@ -391,6 +394,7 @@ const I18N = {
     sigBase64: '서명 (base64)',
     tapToCopy: '탭하여 복사',
     copySig: '서명 복사',
+    sha256: 'SHA-256',
     settings: '설정',
     version: '버전',
     language: '언어',
@@ -517,11 +521,11 @@ const I18N = {
     receivingFountain: 'Recibiendo c\u00f3digo fountain...', urFailed: 'Decodificaci\u00f3n UR fallida. Int\u00e9ntalo de nuevo.', psbtParseError: 'Error de an\u00e1lisis PSBT: ',
     confirmTx: 'Confirmar transacci\u00f3n', reviewBeforeSign: 'Revisa cuidadosamente antes de firmar.',
     inputs: 'Entradas', output: 'Salida', change: '(cambio)', fee: 'Comisi\u00f3n', reject: 'Rechazar', sign: 'Firmar', signingFailed: 'Error al firmar: ',
-    signedPsbt: 'PSBT firmado', showQRDesc: 'Muestra este QR a tu app BitClutch para transmitir.', done: 'Hecho',
+    signedPsbt: 'PSBT firmado', showQRDesc: 'Deja que tu app BitClutch escanee este QR para transmitir la transacci\u00f3n.', scanComplete: 'Escaneo completado', scanSignatureDesc: 'Deja que tu app BitClutch escanee este QR para enviar la firma.',
     singleQR: 'QR \u00fanico', fountainKeepShowing: 'c\u00f3digo fountain \u2014 sigue mostrando', frame: 'Fotograma',
     confirmBms: 'Confirmar firma de mensaje', reviewMessage: 'Revisa el mensaje antes de firmar.',
     type: 'Tipo', bmsType: 'BMS (Mensaje Bitcoin)', index: '\u00cdndice', address: 'Direcci\u00f3n', message: 'Mensaje',
-    bmsSignature: 'Firma BMS', sigBase64: 'Firma (base64)', tapToCopy: 'Toca para copiar', copySig: 'Copiar firma',
+    bmsSignature: 'Firma BMS', sigBase64: 'Firma (base64)', tapToCopy: 'Toca para copiar', copySig: 'Copiar firma', sha256: 'SHA-256',
     settings: 'Ajustes', version: 'Versi\u00f3n', language: 'Idioma', seedLanguage: 'Idioma semilla',
     onlineKeygenTitle: '\u00a1Red conectada!',
     onlineKeygenBody: 'Tu dispositivo est\u00e1 conectado a internet. Las claves generadas en l\u00ednea pueden ser interceptadas por malware. Desconecta TODAS las redes (WiFi, celular, Bluetooth, USB) antes de continuar.',
@@ -595,11 +599,11 @@ const I18N = {
     receivingFountain: '\u30d5\u30a1\u30a6\u30f3\u30c6\u30f3\u30b3\u30fc\u30c9\u53d7\u4fe1\u4e2d...', urFailed: 'UR\u30c7\u30b3\u30fc\u30c9\u5931\u6557\u3002\u3082\u3046\u4e00\u5ea6\u304a\u8a66\u3057\u304f\u3060\u3055\u3044\u3002', psbtParseError: 'PSBT\u89e3\u6790\u30a8\u30e9\u30fc: ',
     confirmTx: '\u30c8\u30e9\u30f3\u30b6\u30af\u30b7\u30e7\u30f3\u78ba\u8a8d', reviewBeforeSign: '\u7f72\u540d\u524d\u306b\u6ce8\u610f\u6df1\u304f\u78ba\u8a8d\u3057\u3066\u304f\u3060\u3055\u3044\u3002',
     inputs: '\u5165\u529b', output: '\u51fa\u529b', change: '(\u304a\u91e3\u308a)', fee: '\u624b\u6570\u6599', reject: '\u62d2\u5426', sign: '\u7f72\u540d', signingFailed: '\u7f72\u540d\u5931\u6557: ',
-    signedPsbt: '\u7f72\u540d\u6e08\u307fPSBT', showQRDesc: 'BitClutch\u30a2\u30d7\u30ea\u306b\u3053\u306eQR\u3092\u898b\u305b\u3066\u30d6\u30ed\u30fc\u30c9\u30ad\u30e3\u30b9\u30c8\u3057\u3066\u304f\u3060\u3055\u3044\u3002', done: '\u5b8c\u4e86',
+    signedPsbt: '\u7f72\u540d\u6e08\u307fPSBT', showQRDesc: 'BitClutch\u30a2\u30d7\u30ea\u3067\u3053\u306eQR\u30b3\u30fc\u30c9\u3092\u30b9\u30ad\u30e3\u30f3\u3057\u3066\u30c8\u30e9\u30f3\u30b6\u30af\u30b7\u30e7\u30f3\u3092\u30d6\u30ed\u30fc\u30c9\u30ad\u30e3\u30b9\u30c8\u3057\u3066\u304f\u3060\u3055\u3044\u3002', scanComplete: '\u30b9\u30ad\u30e3\u30f3\u5b8c\u4e86', scanSignatureDesc: 'BitClutch\u30a2\u30d7\u30ea\u3067\u3053\u306eQR\u30b3\u30fc\u30c9\u3092\u30b9\u30ad\u30e3\u30f3\u3057\u3066\u7f72\u540d\u3092\u9001\u4fe1\u3057\u3066\u304f\u3060\u3055\u3044\u3002',
     singleQR: '\u5358\u4e00QR', fountainKeepShowing: '\u30d5\u30a1\u30a6\u30f3\u30c6\u30f3\u30b3\u30fc\u30c9 \u2014 \u8868\u793a\u3092\u7d9a\u3051\u3066\u304f\u3060\u3055\u3044', frame: '\u30d5\u30ec\u30fc\u30e0',
     confirmBms: '\u30e1\u30c3\u30bb\u30fc\u30b8\u7f72\u540d\u78ba\u8a8d', reviewMessage: '\u7f72\u540d\u524d\u306b\u30e1\u30c3\u30bb\u30fc\u30b8\u3092\u78ba\u8a8d\u3057\u3066\u304f\u3060\u3055\u3044\u3002',
     type: '\u30bf\u30a4\u30d7', bmsType: 'BMS (\u30d3\u30c3\u30c8\u30b3\u30a4\u30f3\u30e1\u30c3\u30bb\u30fc\u30b8)', index: '\u30a4\u30f3\u30c7\u30c3\u30af\u30b9', address: '\u30a2\u30c9\u30ec\u30b9', message: '\u30e1\u30c3\u30bb\u30fc\u30b8',
-    bmsSignature: 'BMS\u7f72\u540d', sigBase64: '\u7f72\u540d (base64)', tapToCopy: '\u30bf\u30c3\u30d7\u3057\u3066\u30b3\u30d4\u30fc', copySig: '\u7f72\u540d\u3092\u30b3\u30d4\u30fc',
+    bmsSignature: 'BMS\u7f72\u540d', sigBase64: '\u7f72\u540d (base64)', tapToCopy: '\u30bf\u30c3\u30d7\u3057\u3066\u30b3\u30d4\u30fc', copySig: '\u7f72\u540d\u3092\u30b3\u30d4\u30fc', sha256: 'SHA-256',
     settings: '\u8a2d\u5b9a', version: '\u30d0\u30fc\u30b8\u30e7\u30f3', language: '\u8a00\u8a9e', seedLanguage: '\u30b7\u30fc\u30c9\u8a00\u8a9e',
     onlineKeygenTitle: '\u30cd\u30c3\u30c8\u30ef\u30fc\u30af\u63a5\u7d9a\u4e2d\uff01',
     onlineKeygenBody: '\u30c7\u30d0\u30a4\u30b9\u304c\u30a4\u30f3\u30bf\u30fc\u30cd\u30c3\u30c8\u306b\u63a5\u7d9a\u3055\u308c\u3066\u3044\u307e\u3059\u3002\u30aa\u30f3\u30e9\u30a4\u30f3\u3067\u751f\u6210\u3055\u308c\u305f\u9375\u306f\u30de\u30eb\u30a6\u30a7\u30a2\u306b\u50b5\u53d7\u3055\u308c\u308b\u53ef\u80fd\u6027\u304c\u3042\u308a\u307e\u3059\u3002\u7d9a\u884c\u3059\u308b\u524d\u306b\u3059\u3079\u3066\u306e\u30cd\u30c3\u30c8\u30ef\u30fc\u30af\uff08WiFi\u3001\u30e2\u30d0\u30a4\u30eb\u3001Bluetooth\u3001USB\uff09\u3092\u5207\u65ad\u3057\u3066\u304f\u3060\u3055\u3044\u3002',
@@ -673,11 +677,11 @@ const I18N = {
     receivingFountain: 'Recebendo c\u00f3digo fountain...', urFailed: 'Decodifica\u00e7\u00e3o UR falhou. Tente novamente.', psbtParseError: 'Erro de an\u00e1lise PSBT: ',
     confirmTx: 'Confirmar transa\u00e7\u00e3o', reviewBeforeSign: 'Revise cuidadosamente antes de assinar.',
     inputs: 'Entradas', output: 'Sa\u00edda', change: '(troco)', fee: 'Taxa', reject: 'Rejeitar', sign: 'Assinar', signingFailed: 'Falha na assinatura: ',
-    signedPsbt: 'PSBT assinado', showQRDesc: 'Mostre este QR ao seu app BitClutch para transmitir.', done: 'Conclu\u00eddo',
+    signedPsbt: 'PSBT assinado', showQRDesc: 'Deixe seu app BitClutch escanear este QR para transmitir a transa\u00e7\u00e3o.', scanComplete: 'Escaneamento conclu\u00eddo', scanSignatureDesc: 'Deixe seu app BitClutch escanear este QR para enviar a assinatura.',
     singleQR: 'QR \u00fanico', fountainKeepShowing: 'c\u00f3digo fountain \u2014 continue mostrando', frame: 'Quadro',
     confirmBms: 'Confirmar assinatura de mensagem', reviewMessage: 'Revise a mensagem antes de assinar.',
     type: 'Tipo', bmsType: 'BMS (Mensagem Bitcoin)', index: '\u00cdndice', address: 'Endere\u00e7o', message: 'Mensagem',
-    bmsSignature: 'Assinatura BMS', sigBase64: 'Assinatura (base64)', tapToCopy: 'Toque para copiar', copySig: 'Copiar assinatura',
+    bmsSignature: 'Assinatura BMS', sigBase64: 'Assinatura (base64)', tapToCopy: 'Toque para copiar', copySig: 'Copiar assinatura', sha256: 'SHA-256',
     settings: 'Configura\u00e7\u00f5es', version: 'Vers\u00e3o', language: 'Idioma', seedLanguage: 'Idioma semente',
     onlineKeygenTitle: 'Rede conectada!',
     onlineKeygenBody: 'Seu dispositivo est\u00e1 conectado \u00e0 internet. Chaves geradas online podem ser interceptadas por malware. Desconecte TODAS as redes (WiFi, celular, Bluetooth, USB) antes de continuar.',
@@ -751,11 +755,11 @@ const I18N = {
     receivingFountain: 'Empfange Fountain-Code...', urFailed: 'UR-Dekodierung fehlgeschlagen. Erneut versuchen.', psbtParseError: 'PSBT-Analysefehler: ',
     confirmTx: 'Transaktion best\u00e4tigen', reviewBeforeSign: 'Sorgf\u00e4ltig pr\u00fcfen vor dem Signieren.',
     inputs: 'Eingaben', output: 'Ausgabe', change: '(Wechselgeld)', fee: 'Geb\u00fchr', reject: 'Ablehnen', sign: 'Signieren', signingFailed: 'Signierung fehlgeschlagen: ',
-    signedPsbt: 'Signierte PSBT', showQRDesc: 'Zeige diesen QR deiner BitClutch-App zum Senden.', done: 'Fertig',
+    signedPsbt: 'Signierte PSBT', showQRDesc: 'Lass deine BitClutch-App diesen QR-Code scannen, um die Transaktion zu senden.', scanComplete: 'Scan abgeschlossen', scanSignatureDesc: 'Lass deine BitClutch-App diesen QR-Code scannen, um die Signatur zu senden.',
     singleQR: 'Einzel-QR', fountainKeepShowing: 'Fountain-Code \u2014 weiter anzeigen', frame: 'Bild',
     confirmBms: 'Nachrichtensignierung best\u00e4tigen', reviewMessage: 'Pr\u00fcfe die Nachricht vor dem Signieren.',
     type: 'Typ', bmsType: 'BMS (Bitcoin-Nachricht)', index: 'Index', address: 'Adresse', message: 'Nachricht',
-    bmsSignature: 'BMS-Signatur', sigBase64: 'Signatur (base64)', tapToCopy: 'Tippen zum Kopieren', copySig: 'Signatur kopieren',
+    bmsSignature: 'BMS-Signatur', sigBase64: 'Signatur (base64)', tapToCopy: 'Tippen zum Kopieren', copySig: 'Signatur kopieren', sha256: 'SHA-256',
     settings: 'Einstellungen', version: 'Version', language: 'Sprache', seedLanguage: 'Seed-Sprache',
     onlineKeygenTitle: 'Netzwerk verbunden!',
     onlineKeygenBody: 'Ihr Ger\u00e4t ist mit dem Internet verbunden. Online generierte Schl\u00fcssel k\u00f6nnen von Malware abgefangen werden. Trennen Sie ALLE Netzwerke (WiFi, Mobilfunk, Bluetooth, USB) bevor Sie fortfahren.',
@@ -829,11 +833,11 @@ const I18N = {
     receivingFountain: 'R\u00e9ception du code fountain...', urFailed: 'D\u00e9codage UR \u00e9chou\u00e9. R\u00e9essayez.', psbtParseError: 'Erreur d\u2019analyse PSBT : ',
     confirmTx: 'Confirmer la transaction', reviewBeforeSign: 'V\u00e9rifiez attentivement avant de signer.',
     inputs: 'Entr\u00e9es', output: 'Sortie', change: '(monnaie)', fee: 'Frais', reject: 'Rejeter', sign: 'Signer', signingFailed: '\u00c9chec de la signature : ',
-    signedPsbt: 'PSBT sign\u00e9', showQRDesc: 'Montrez ce QR \u00e0 votre app BitClutch pour diffuser.', done: 'Termin\u00e9',
+    signedPsbt: 'PSBT sign\u00e9', showQRDesc: 'Laissez votre app BitClutch scanner ce QR pour diffuser la transaction.', scanComplete: 'Scan termin\u00e9', scanSignatureDesc: 'Laissez votre app BitClutch scanner ce QR pour soumettre la signature.',
     singleQR: 'QR unique', fountainKeepShowing: 'code fountain \u2014 continuez \u00e0 montrer', frame: 'Image',
     confirmBms: 'Confirmer la signature du message', reviewMessage: 'V\u00e9rifiez le message avant de signer.',
     type: 'Type', bmsType: 'BMS (Message Bitcoin)', index: 'Index', address: 'Adresse', message: 'Message',
-    bmsSignature: 'Signature BMS', sigBase64: 'Signature (base64)', tapToCopy: 'Touchez pour copier', copySig: 'Copier signature',
+    bmsSignature: 'Signature BMS', sigBase64: 'Signature (base64)', tapToCopy: 'Touchez pour copier', copySig: 'Copier signature', sha256: 'SHA-256',
     settings: 'Param\u00e8tres', version: 'Version', language: 'Langue', seedLanguage: 'Langue de la phrase',
     onlineKeygenTitle: 'R\u00e9seau connect\u00e9 !',
     onlineKeygenBody: 'Votre appareil est connect\u00e9 \u00e0 Internet. Les cl\u00e9s g\u00e9n\u00e9r\u00e9es en ligne peuvent \u00eatre intercept\u00e9es par des malwares. D\u00e9connectez TOUS les r\u00e9seaux (WiFi, cellulaire, Bluetooth, USB) avant de continuer.',
@@ -907,11 +911,11 @@ const I18N = {
     receivingFountain: '\u63a5\u6536\u55b7\u6cc9\u7801\u4e2d...', urFailed: 'UR\u89e3\u7801\u5931\u8d25\u3002\u8bf7\u91cd\u8bd5\u3002', psbtParseError: 'PSBT\u89e3\u6790\u9519\u8bef\uff1a',
     confirmTx: '\u786e\u8ba4\u4ea4\u6613', reviewBeforeSign: '\u7b7e\u540d\u524d\u8bf7\u4ed4\u7ec6\u68c0\u67e5\u3002',
     inputs: '\u8f93\u5165', output: '\u8f93\u51fa', change: '(\u627e\u96f6)', fee: '\u8d39\u7528', reject: '\u62d2\u7edd', sign: '\u7b7e\u540d', signingFailed: '\u7b7e\u540d\u5931\u8d25\uff1a',
-    signedPsbt: '\u5df2\u7b7e\u540dPSBT', showQRDesc: '\u5411BitClutch\u5e94\u7528\u5c55\u793a\u6b64\u4e8c\u7ef4\u7801\u4ee5\u5e7f\u64ad\u3002', done: '\u5b8c\u6210',
+    signedPsbt: '\u5df2\u7b7e\u540dPSBT', showQRDesc: '\u8ba9BitClutch\u5e94\u7528\u626b\u63cf\u6b64QR\u7801\u4ee5\u5e7f\u64ad\u4ea4\u6613\u3002', scanComplete: '\u626b\u63cf\u5b8c\u6210', scanSignatureDesc: '\u8ba9BitClutch\u5e94\u7528\u626b\u63cf\u6b64QR\u7801\u4ee5\u63d0\u4ea4\u7b7e\u540d\u3002',
     singleQR: '\u5355\u4e2a\u4e8c\u7ef4\u7801', fountainKeepShowing: '\u55b7\u6cc9\u7801 \u2014 \u8bf7\u7ee7\u7eed\u5c55\u793a', frame: '\u5e27',
     confirmBms: '\u786e\u8ba4\u6d88\u606f\u7b7e\u540d', reviewMessage: '\u7b7e\u540d\u524d\u8bf7\u68c0\u67e5\u6d88\u606f\u3002',
     type: '\u7c7b\u578b', bmsType: 'BMS (\u6bd4\u7279\u5e01\u6d88\u606f)', index: '\u7d22\u5f15', address: '\u5730\u5740', message: '\u6d88\u606f',
-    bmsSignature: 'BMS\u7b7e\u540d', sigBase64: '\u7b7e\u540d (base64)', tapToCopy: '\u70b9\u51fb\u590d\u5236', copySig: '\u590d\u5236\u7b7e\u540d',
+    bmsSignature: 'BMS\u7b7e\u540d', sigBase64: '\u7b7e\u540d (base64)', tapToCopy: '\u70b9\u51fb\u590d\u5236', copySig: '\u590d\u5236\u7b7e\u540d', sha256: 'SHA-256',
     settings: '\u8bbe\u7f6e', version: '\u7248\u672c', language: '\u8bed\u8a00', seedLanguage: '\u52a9\u8bb0\u8bcd\u8bed\u8a00',
     onlineKeygenTitle: '\u7f51\u7edc\u5df2\u8fde\u63a5\uff01',
     onlineKeygenBody: '\u60a8\u7684\u8bbe\u5907\u5df2\u8fde\u63a5\u5230\u4e92\u8054\u7f51\u3002\u5728\u7ebf\u751f\u6210\u7684\u5bc6\u94a5\u53ef\u80fd\u88ab\u6076\u610f\u8f6f\u4ef6\u62e6\u622a\u3002\u8bf7\u5728\u7ee7\u7eed\u4e4b\u524d\u65ad\u5f00\u6240\u6709\u7f51\u7edc\uff08WiFi\u3001\u79fb\u52a8\u6570\u636e\u3001\u84dd\u7259\u3001USB\uff09\u3002',
@@ -985,11 +989,11 @@ const I18N = {
     receivingFountain: '\u63a5\u6536\u5674\u6cc9\u78bc\u4e2d...', urFailed: 'UR\u89e3\u78bc\u5931\u6557\u3002\u8acb\u91cd\u8a66\u3002', psbtParseError: 'PSBT\u89e3\u6790\u932f\u8aa4\uff1a',
     confirmTx: '\u78ba\u8a8d\u4ea4\u6613', reviewBeforeSign: '\u7c3d\u540d\u524d\u8acb\u4ed4\u7d30\u6aa2\u67e5\u3002',
     inputs: '\u8f38\u5165', output: '\u8f38\u51fa', change: '(\u627e\u96f6)', fee: '\u8cbb\u7528', reject: '\u62d2\u7d55', sign: '\u7c3d\u540d', signingFailed: '\u7c3d\u540d\u5931\u6557\uff1a',
-    signedPsbt: '\u5df2\u7c3d\u540dPSBT', showQRDesc: '\u5411BitClutch\u61c9\u7528\u5c55\u793a\u6b64QR\u78bc\u4ee5\u5ee3\u64ad\u3002', done: '\u5b8c\u6210',
+    signedPsbt: '\u5df2\u7c3d\u540dPSBT', showQRDesc: '\u8b93BitClutch\u61c9\u7528\u6383\u63cf\u6b64QR\u78bc\u4ee5\u5ee3\u64ad\u4ea4\u6613\u3002', scanComplete: '\u6383\u63cf\u5b8c\u6210', scanSignatureDesc: '\u8b93BitClutch\u61c9\u7528\u6383\u63cf\u6b64QR\u78bc\u4ee5\u63d0\u4ea4\u7c3d\u540d\u3002',
     singleQR: '\u55ae\u500bQR', fountainKeepShowing: '\u5674\u6cc9\u78bc \u2014 \u8acb\u7e7c\u7e8c\u5c55\u793a', frame: '\u5e40',
     confirmBms: '\u78ba\u8a8d\u8a0a\u606f\u7c3d\u540d', reviewMessage: '\u7c3d\u540d\u524d\u8acb\u6aa2\u67e5\u8a0a\u606f\u3002',
     type: '\u985e\u578b', bmsType: 'BMS (\u6bd4\u7279\u5e63\u8a0a\u606f)', index: '\u7d22\u5f15', address: '\u5730\u5740', message: '\u8a0a\u606f',
-    bmsSignature: 'BMS\u7c3d\u540d', sigBase64: '\u7c3d\u540d (base64)', tapToCopy: '\u9ede\u64ca\u8907\u88fd', copySig: '\u8907\u88fd\u7c3d\u540d',
+    bmsSignature: 'BMS\u7c3d\u540d', sigBase64: '\u7c3d\u540d (base64)', tapToCopy: '\u9ede\u64ca\u8907\u88fd', copySig: '\u8907\u88fd\u7c3d\u540d', sha256: 'SHA-256',
     settings: '\u8a2d\u5b9a', version: '\u7248\u672c', language: '\u8a9e\u8a00', seedLanguage: '\u52a9\u8a18\u8a5e\u8a9e\u8a00',
     onlineKeygenTitle: '\u7db2\u8def\u5df2\u9023\u63a5\uff01',
     onlineKeygenBody: '\u60a8\u7684\u88dd\u7f6e\u5df2\u9023\u63a5\u5230\u7db2\u969b\u7db2\u8def\u3002\u7dda\u4e0a\u7522\u751f\u7684\u91d1\u9470\u53ef\u80fd\u88ab\u60e1\u610f\u8edf\u9ad4\u6514\u622a\u3002\u8acb\u5728\u7e7c\u7e8c\u4e4b\u524d\u65b7\u958b\u6240\u6709\u7db2\u8def\uff08WiFi\u3001\u884c\u52d5\u6578\u64da\u3001\u85cd\u7259\u3001USB\uff09\u3002',
@@ -1063,11 +1067,11 @@ const I18N = {
     receivingFountain: 'Fountain kodu al\u0131n\u0131yor...', urFailed: 'UR \u00e7\u00f6zme ba\u015far\u0131s\u0131z. Tekrar deneyin.', psbtParseError: 'PSBT ayr\u0131\u015ft\u0131rma hatas\u0131: ',
     confirmTx: '\u0130\u015flemi onayla', reviewBeforeSign: '\u0130mzalamadan \u00f6nce dikkatlice inceleyin.',
     inputs: 'Girdiler', output: '\u00c7\u0131kt\u0131', change: '(\u00fcst\u00fc)', fee: '\u00dccret', reject: 'Reddet', sign: '\u0130mzala', signingFailed: '\u0130mzalama hatas\u0131: ',
-    signedPsbt: '\u0130mzal\u0131 PSBT', showQRDesc: 'Yay\u0131nlamak i\u00e7in bu QR\u2019\u0131 BitClutch uygulaman\u0131za g\u00f6sterin.', done: 'Bitti',
+    signedPsbt: '\u0130mzal\u0131 PSBT', showQRDesc: '\u0130\u015flemi yay\u0131nlamak i\u00e7in BitClutch uygulaman\u0131z\u0131n bu QR kodunu taramas\u0131n\u0131 sa\u011flay\u0131n.', scanComplete: 'Tarama tamamland\u0131', scanSignatureDesc: '\u0130mzay\u0131 g\u00f6ndermek i\u00e7in BitClutch uygulaman\u0131z\u0131n bu QR kodunu taramas\u0131n\u0131 sa\u011flay\u0131n.',
     singleQR: 'Tek QR', fountainKeepShowing: 'fountain kodu \u2014 g\u00f6stermeye devam edin', frame: 'Kare',
     confirmBms: 'Mesaj imzalamay\u0131 onayla', reviewMessage: '\u0130mzalamadan \u00f6nce mesaj\u0131 inceleyin.',
     type: 'T\u00fcr', bmsType: 'BMS (Bitcoin Mesaj\u0131)', index: '\u0130ndeks', address: 'Adres', message: 'Mesaj',
-    bmsSignature: 'BMS \u0130mzas\u0131', sigBase64: '\u0130mza (base64)', tapToCopy: 'Kopyalamak i\u00e7in dokun', copySig: '\u0130mzay\u0131 kopyala',
+    bmsSignature: 'BMS \u0130mzas\u0131', sigBase64: '\u0130mza (base64)', tapToCopy: 'Kopyalamak i\u00e7in dokun', copySig: '\u0130mzay\u0131 kopyala', sha256: 'SHA-256',
     settings: 'Ayarlar', version: 'S\u00fcr\u00fcm', language: 'Dil', seedLanguage: 'Tohum dili',
     onlineKeygenTitle: 'A\u011f ba\u011fl\u0131!',
     onlineKeygenBody: 'Cihaz\u0131n\u0131z internete ba\u011fl\u0131. \u00c7evrimi\u00e7i olu\u015fturulan anahtarlar zararl\u0131 yaz\u0131l\u0131m taraf\u0131ndan ele ge\u00e7irilebilir. Devam etmeden \u00f6nce T\u00dcM a\u011flar\u0131 (WiFi, h\u00fccresel, Bluetooth, USB) kesin.',
@@ -1141,11 +1145,11 @@ const I18N = {
     receivingFountain: 'Ricezione codice fountain...', urFailed: 'Decodifica UR fallita. Riprova.', psbtParseError: 'Errore analisi PSBT: ',
     confirmTx: 'Conferma transazione', reviewBeforeSign: 'Controlla attentamente prima di firmare.',
     inputs: 'Input', output: 'Output', change: '(resto)', fee: 'Commissione', reject: 'Rifiuta', sign: 'Firma', signingFailed: 'Firma fallita: ',
-    signedPsbt: 'PSBT firmato', showQRDesc: 'Mostra questo QR alla tua app BitClutch per trasmettere.', done: 'Fatto',
+    signedPsbt: 'PSBT firmato', showQRDesc: 'Lascia che la tua app BitClutch scansioni questo QR per trasmettere la transazione.', scanComplete: 'Scansione completata', scanSignatureDesc: 'Lascia che la tua app BitClutch scansioni questo QR per inviare la firma.',
     singleQR: 'QR singolo', fountainKeepShowing: 'codice fountain \u2014 continua a mostrare', frame: 'Fotogramma',
     confirmBms: 'Conferma firma messaggio', reviewMessage: 'Controlla il messaggio prima di firmare.',
     type: 'Tipo', bmsType: 'BMS (Messaggio Bitcoin)', index: 'Indice', address: 'Indirizzo', message: 'Messaggio',
-    bmsSignature: 'Firma BMS', sigBase64: 'Firma (base64)', tapToCopy: 'Tocca per copiare', copySig: 'Copia firma',
+    bmsSignature: 'Firma BMS', sigBase64: 'Firma (base64)', tapToCopy: 'Tocca per copiare', copySig: 'Copia firma', sha256: 'SHA-256',
     settings: 'Impostazioni', version: 'Versione', language: 'Lingua', seedLanguage: 'Lingua seme',
     onlineKeygenTitle: 'Rete connessa!',
     onlineKeygenBody: 'Il tuo dispositivo \u00e8 connesso a Internet. Le chiavi generate online possono essere intercettate da malware. Disconnetti TUTTE le reti (WiFi, cellulare, Bluetooth, USB) prima di continuare.',
@@ -1219,11 +1223,11 @@ const I18N = {
     receivingFountain: '\u0110ang nh\u1eadn m\u00e3 fountain...', urFailed: 'Gi\u1ea3i m\u00e3 UR th\u1ea5t b\u1ea1i. Th\u1eed l\u1ea1i.', psbtParseError: 'L\u1ed7i ph\u00e2n t\u00edch PSBT: ',
     confirmTx: 'X\u00e1c nh\u1eadn giao d\u1ecbch', reviewBeforeSign: 'Ki\u1ec3m tra c\u1ea9n th\u1eadn tr\u01b0\u1edbc khi k\u00fd.',
     inputs: '\u0110\u1ea7u v\u00e0o', output: '\u0110\u1ea7u ra', change: '(ti\u1ec1n th\u1eeba)', fee: 'Ph\u00ed', reject: 'T\u1eeb ch\u1ed1i', sign: 'K\u00fd', signingFailed: 'K\u00fd th\u1ea5t b\u1ea1i: ',
-    signedPsbt: 'PSBT \u0111\u00e3 k\u00fd', showQRDesc: 'Hi\u1ec3n QR n\u00e0y cho \u1ee9ng d\u1ee5ng BitClutch \u0111\u1ec3 ph\u00e1t s\u00f3ng.', done: 'Xong',
+    signedPsbt: 'PSBT \u0111\u00e3 k\u00fd', showQRDesc: '\u0110\u1ec3 \u1ee9ng d\u1ee5ng BitClutch qu\u00e9t m\u00e3 QR n\u00e0y \u0111\u1ec3 ph\u00e1t s\u00f3ng giao d\u1ecbch.', scanComplete: 'Qu\u00e9t ho\u00e0n t\u1ea5t', scanSignatureDesc: '\u0110\u1ec3 \u1ee9ng d\u1ee5ng BitClutch qu\u00e9t m\u00e3 QR n\u00e0y \u0111\u1ec3 g\u1eedi ch\u1eef k\u00fd.',
     singleQR: 'QR \u0111\u01a1n', fountainKeepShowing: 'm\u00e3 fountain \u2014 ti\u1ebfp t\u1ee5c hi\u1ec3n', frame: 'Khung h\u00ecnh',
     confirmBms: 'X\u00e1c nh\u1eadn k\u00fd tin nh\u1eafn', reviewMessage: 'Ki\u1ec3m tra tin nh\u1eafn tr\u01b0\u1edbc khi k\u00fd.',
     type: 'Lo\u1ea1i', bmsType: 'BMS (Tin nh\u1eafn Bitcoin)', index: 'Ch\u1ec9 s\u1ed1', address: '\u0110\u1ecba ch\u1ec9', message: 'Tin nh\u1eafn',
-    bmsSignature: 'Ch\u1eef k\u00fd BMS', sigBase64: 'Ch\u1eef k\u00fd (base64)', tapToCopy: 'Ch\u1ea1m \u0111\u1ec3 sao ch\u00e9p', copySig: 'Sao ch\u00e9p ch\u1eef k\u00fd',
+    bmsSignature: 'Ch\u1eef k\u00fd BMS', sigBase64: 'Ch\u1eef k\u00fd (base64)', tapToCopy: 'Ch\u1ea1m \u0111\u1ec3 sao ch\u00e9p', copySig: 'Sao ch\u00e9p ch\u1eef k\u00fd', sha256: 'SHA-256',
     settings: 'C\u00e0i \u0111\u1eb7t', version: 'Phi\u00ean b\u1ea3n', language: 'Ng\u00f4n ng\u1eef', seedLanguage: 'Ng\u00f4n ng\u1eef seed',
     onlineKeygenTitle: 'M\u1ea1ng \u0111\u00e3 k\u1ebft n\u1ed1i!',
     onlineKeygenBody: 'Thi\u1ebft b\u1ecb c\u1ee7a b\u1ea1n \u0111ang k\u1ebft n\u1ed1i internet. Kh\u00f3a \u0111\u01b0\u1ee3c t\u1ea1o tr\u1ef1c tuy\u1ebfn c\u00f3 th\u1ec3 b\u1ecb ph\u1ea7n m\u1ec1m \u0111\u1ed9c h\u1ea1i ch\u1eb7n. Ng\u1eaft T\u1ea4T C\u1ea2 m\u1ea1ng (WiFi, di \u0111\u1ed9ng, Bluetooth, USB) tr\u01b0\u1edbc khi ti\u1ebfp t\u1ee5c.',
@@ -1297,11 +1301,11 @@ const I18N = {
     receivingFountain: '\u0e01\u0e33\u0e25\u0e31\u0e07\u0e23\u0e31\u0e1a fountain code...', urFailed: '\u0e16\u0e2d\u0e14\u0e23\u0e2b\u0e31\u0e2a UR \u0e25\u0e49\u0e21\u0e40\u0e2b\u0e25\u0e27 \u0e25\u0e2d\u0e07\u0e43\u0e2b\u0e21\u0e48', psbtParseError: 'PSBT \u0e27\u0e34\u0e40\u0e04\u0e23\u0e32\u0e30\u0e2b\u0e4c\u0e1c\u0e34\u0e14\u0e1e\u0e25\u0e32\u0e14: ',
     confirmTx: '\u0e22\u0e37\u0e19\u0e22\u0e31\u0e19\u0e18\u0e38\u0e23\u0e01\u0e23\u0e23\u0e21', reviewBeforeSign: '\u0e15\u0e23\u0e27\u0e08\u0e2a\u0e2d\u0e1a\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e23\u0e30\u0e21\u0e31\u0e14\u0e23\u0e30\u0e27\u0e31\u0e07\u0e01\u0e48\u0e2d\u0e19\u0e40\u0e0b\u0e47\u0e19',
     inputs: '\u0e2d\u0e34\u0e19\u0e1e\u0e38\u0e15', output: '\u0e40\u0e2d\u0e32\u0e15\u0e4c\u0e1e\u0e38\u0e15', change: '(\u0e40\u0e07\u0e34\u0e19\u0e17\u0e2d\u0e19)', fee: '\u0e04\u0e48\u0e32\u0e18\u0e23\u0e23\u0e21\u0e40\u0e19\u0e35\u0e22\u0e21', reject: '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18', sign: '\u0e40\u0e0b\u0e47\u0e19', signingFailed: '\u0e40\u0e0b\u0e47\u0e19\u0e25\u0e49\u0e21\u0e40\u0e2b\u0e25\u0e27: ',
-    signedPsbt: 'PSBT \u0e17\u0e35\u0e48\u0e40\u0e0b\u0e47\u0e19\u0e41\u0e25\u0e49\u0e27', showQRDesc: '\u0e41\u0e2a\u0e14\u0e07 QR \u0e19\u0e35\u0e49\u0e43\u0e2b\u0e49\u0e41\u0e2d\u0e1b BitClutch \u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e1b\u0e23\u0e30\u0e01\u0e32\u0e28', done: '\u0e40\u0e2a\u0e23\u0e47\u0e08',
+    signedPsbt: 'PSBT \u0e17\u0e35\u0e48\u0e40\u0e0b\u0e47\u0e19\u0e41\u0e25\u0e49\u0e27', showQRDesc: '\u0e43\u0e2b\u0e49\u0e41\u0e2d\u0e1b BitClutch \u0e2a\u0e41\u0e01\u0e19 QR \u0e19\u0e35\u0e49\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e1b\u0e23\u0e30\u0e01\u0e32\u0e28\u0e18\u0e38\u0e23\u0e01\u0e23\u0e23\u0e21', scanComplete: '\u0e2a\u0e41\u0e01\u0e19\u0e40\u0e2a\u0e23\u0e47\u0e08', scanSignatureDesc: '\u0e43\u0e2b\u0e49\u0e41\u0e2d\u0e1b BitClutch \u0e2a\u0e41\u0e01\u0e19 QR \u0e19\u0e35\u0e49\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e2a\u0e48\u0e07\u0e25\u0e32\u0e22\u0e40\u0e0b\u0e47\u0e19',
     singleQR: 'QR \u0e40\u0e14\u0e35\u0e22\u0e27', fountainKeepShowing: 'fountain code \u2014 \u0e41\u0e2a\u0e14\u0e07\u0e15\u0e48\u0e2d\u0e44\u0e1b', frame: '\u0e40\u0e1f\u0e23\u0e21',
     confirmBms: '\u0e22\u0e37\u0e19\u0e22\u0e31\u0e19\u0e01\u0e32\u0e23\u0e40\u0e0b\u0e47\u0e19\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21', reviewMessage: '\u0e15\u0e23\u0e27\u0e08\u0e2a\u0e2d\u0e1a\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21\u0e01\u0e48\u0e2d\u0e19\u0e40\u0e0b\u0e47\u0e19',
     type: '\u0e1b\u0e23\u0e30\u0e40\u0e20\u0e17', bmsType: 'BMS (\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21 Bitcoin)', index: '\u0e14\u0e31\u0e0a\u0e19\u0e35', address: '\u0e17\u0e35\u0e48\u0e2d\u0e22\u0e39\u0e48', message: '\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21',
-    bmsSignature: '\u0e25\u0e32\u0e22\u0e40\u0e0b\u0e47\u0e19 BMS', sigBase64: '\u0e25\u0e32\u0e22\u0e40\u0e0b\u0e47\u0e19 (base64)', tapToCopy: '\u0e41\u0e15\u0e30\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e04\u0e31\u0e14\u0e25\u0e2d\u0e01', copySig: '\u0e04\u0e31\u0e14\u0e25\u0e2d\u0e01\u0e25\u0e32\u0e22\u0e40\u0e0b\u0e47\u0e19',
+    bmsSignature: '\u0e25\u0e32\u0e22\u0e40\u0e0b\u0e47\u0e19 BMS', sigBase64: '\u0e25\u0e32\u0e22\u0e40\u0e0b\u0e47\u0e19 (base64)', tapToCopy: '\u0e41\u0e15\u0e30\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e04\u0e31\u0e14\u0e25\u0e2d\u0e01', copySig: '\u0e04\u0e31\u0e14\u0e25\u0e2d\u0e01\u0e25\u0e32\u0e22\u0e40\u0e0b\u0e47\u0e19', sha256: 'SHA-256',
     settings: '\u0e15\u0e31\u0e49\u0e07\u0e04\u0e48\u0e32', version: '\u0e40\u0e27\u0e2d\u0e23\u0e4c\u0e0a\u0e31\u0e19', language: '\u0e20\u0e32\u0e29\u0e32', seedLanguage: '\u0e20\u0e32\u0e29\u0e32\u0e0a\u0e38\u0e14\u0e04\u0e33',
     onlineKeygenTitle: '\u0e40\u0e0a\u0e37\u0e48\u0e2d\u0e21\u0e15\u0e48\u0e2d\u0e40\u0e04\u0e23\u0e37\u0e2d\u0e02\u0e48\u0e32\u0e22\u0e41\u0e25\u0e49\u0e27!',
     onlineKeygenBody: '\u0e2d\u0e38\u0e1b\u0e01\u0e23\u0e13\u0e4c\u0e02\u0e2d\u0e07\u0e04\u0e38\u0e13\u0e40\u0e0a\u0e37\u0e48\u0e2d\u0e21\u0e15\u0e48\u0e2d\u0e2d\u0e34\u0e19\u0e40\u0e17\u0e2d\u0e23\u0e4c\u0e40\u0e19\u0e47\u0e15 \u0e04\u0e35\u0e22\u0e4c\u0e17\u0e35\u0e48\u0e2a\u0e23\u0e49\u0e32\u0e07\u0e02\u0e13\u0e30\u0e2d\u0e2d\u0e19\u0e44\u0e25\u0e19\u0e4c\u0e2d\u0e32\u0e08\u0e16\u0e39\u0e01\u0e14\u0e31\u0e01\u0e08\u0e31\u0e1a\u0e42\u0e14\u0e22\u0e21\u0e31\u0e25\u0e41\u0e27\u0e23\u0e4c \u0e15\u0e31\u0e14\u0e01\u0e32\u0e23\u0e40\u0e0a\u0e37\u0e48\u0e2d\u0e21\u0e15\u0e48\u0e2d\u0e40\u0e04\u0e23\u0e37\u0e2d\u0e02\u0e48\u0e32\u0e22\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14 (WiFi, \u0e21\u0e37\u0e2d\u0e16\u0e37\u0e2d, Bluetooth, USB) \u0e01\u0e48\u0e2d\u0e19\u0e14\u0e33\u0e40\u0e19\u0e34\u0e19\u0e01\u0e32\u0e23',
@@ -1374,11 +1378,11 @@ const I18N = {
     receivingFountain: 'Menerima kode fountain...', urFailed: 'Dekode UR gagal. Coba lagi.', psbtParseError: 'Error parsing PSBT: ',
     confirmTx: 'Konfirmasi transaksi', reviewBeforeSign: 'Periksa dengan teliti sebelum menandatangani.',
     inputs: 'Input', output: 'Output', change: '(kembalian)', fee: 'Biaya', reject: 'Tolak', sign: 'Tanda tangan', signingFailed: 'Penandatanganan gagal: ',
-    signedPsbt: 'PSBT ditandatangani', showQRDesc: 'Tunjukkan QR ini ke aplikasi BitClutch untuk menyiarkan.', done: 'Selesai',
+    signedPsbt: 'PSBT ditandatangani', showQRDesc: 'Biarkan aplikasi BitClutch memindai kode QR ini untuk menyiarkan transaksi.', scanComplete: 'Pemindaian selesai', scanSignatureDesc: 'Biarkan aplikasi BitClutch memindai kode QR ini untuk mengirim tanda tangan.',
     singleQR: 'QR tunggal', fountainKeepShowing: 'kode fountain \u2014 terus tampilkan', frame: 'Bingkai',
     confirmBms: 'Konfirmasi tanda tangan pesan', reviewMessage: 'Periksa pesan sebelum menandatangani.',
     type: 'Tipe', bmsType: 'BMS (Pesan Bitcoin)', index: 'Indeks', address: 'Alamat', message: 'Pesan',
-    bmsSignature: 'Tanda tangan BMS', sigBase64: 'Tanda tangan (base64)', tapToCopy: 'Ketuk untuk menyalin', copySig: 'Salin tanda tangan',
+    bmsSignature: 'Tanda tangan BMS', sigBase64: 'Tanda tangan (base64)', tapToCopy: 'Ketuk untuk menyalin', copySig: 'Salin tanda tangan', sha256: 'SHA-256',
     settings: 'Pengaturan', version: 'Versi', language: 'Bahasa', seedLanguage: 'Bahasa benih',
     onlineKeygenTitle: 'Jaringan terhubung!',
     onlineKeygenBody: 'Perangkat Anda terhubung ke internet. Kunci yang dibuat secara online dapat dicegat oleh malware. Putuskan SEMUA jaringan (WiFi, seluler, Bluetooth, USB) sebelum melanjutkan.',
@@ -1451,11 +1455,11 @@ const I18N = {
     receivingFountain: '\u0627\u0633\u062a\u0642\u0628\u0627\u0644 \u0643\u0648\u062f fountain...', urFailed: '\u0641\u0634\u0644 \u0641\u0643 \u062a\u0634\u0641\u064a\u0631 UR. \u062d\u0627\u0648\u0644 \u0645\u062c\u062f\u062f\u064b\u0627.', psbtParseError: '\u062e\u0637\u0623 \u062a\u062d\u0644\u064a\u0644 PSBT: ',
     confirmTx: '\u062a\u0623\u0643\u064a\u062f \u0627\u0644\u0645\u0639\u0627\u0645\u0644\u0629', reviewBeforeSign: '\u0631\u0627\u062c\u0639 \u0628\u0639\u0646\u0627\u064a\u0629 \u0642\u0628\u0644 \u0627\u0644\u062a\u0648\u0642\u064a\u0639.',
     inputs: '\u0627\u0644\u0645\u062f\u062e\u0644\u0627\u062a', output: '\u0627\u0644\u0645\u062e\u0631\u062c', change: '(\u0628\u0627\u0642\u064a)', fee: '\u0631\u0633\u0648\u0645', reject: '\u0631\u0641\u0636', sign: '\u062a\u0648\u0642\u064a\u0639', signingFailed: '\u0641\u0634\u0644 \u0627\u0644\u062a\u0648\u0642\u064a\u0639: ',
-    signedPsbt: 'PSBT \u0645\u0648\u0642\u0651\u0639', showQRDesc: '\u0627\u0639\u0631\u0636 \u0647\u0630\u0627 \u0627\u0644\u0640 QR \u0644\u062a\u0637\u0628\u064a\u0642 BitClutch \u0644\u0644\u0628\u062b.', done: '\u062a\u0645',
+    signedPsbt: 'PSBT \u0645\u0648\u0642\u0651\u0639', showQRDesc: '\u0627\u062a\u0631\u0643 \u062a\u0637\u0628\u064a\u0642 BitClutch \u064a\u0645\u0633\u062d \u0631\u0645\u0632 QR \u0647\u0630\u0627 \u0644\u0628\u062b \u0627\u0644\u0645\u0639\u0627\u0645\u0644\u0629.', scanComplete: '\u0627\u0643\u062a\u0645\u0644 \u0627\u0644\u0645\u0633\u062d', scanSignatureDesc: '\u0627\u062a\u0631\u0643 \u062a\u0637\u0628\u064a\u0642 BitClutch \u064a\u0645\u0633\u062d \u0631\u0645\u0632 QR \u0647\u0630\u0627 \u0644\u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u062a\u0648\u0642\u064a\u0639.',
     singleQR: 'QR \u0648\u0627\u062d\u062f', fountainKeepShowing: '\u0643\u0648\u062f fountain \u2014 \u0627\u0633\u062a\u0645\u0631 \u0628\u0627\u0644\u0639\u0631\u0636', frame: '\u0625\u0637\u0627\u0631',
     confirmBms: '\u062a\u0623\u0643\u064a\u062f \u062a\u0648\u0642\u064a\u0639 \u0627\u0644\u0631\u0633\u0627\u0644\u0629', reviewMessage: '\u0631\u0627\u062c\u0639 \u0627\u0644\u0631\u0633\u0627\u0644\u0629 \u0642\u0628\u0644 \u0627\u0644\u062a\u0648\u0642\u064a\u0639.',
     type: '\u0627\u0644\u0646\u0648\u0639', bmsType: 'BMS (\u0631\u0633\u0627\u0644\u0629 \u0628\u062a\u0643\u0648\u064a\u0646)', index: '\u0627\u0644\u0641\u0647\u0631\u0633', address: '\u0627\u0644\u0639\u0646\u0648\u0627\u0646', message: '\u0627\u0644\u0631\u0633\u0627\u0644\u0629',
-    bmsSignature: '\u062a\u0648\u0642\u064a\u0639 BMS', sigBase64: '\u0627\u0644\u062a\u0648\u0642\u064a\u0639 (base64)', tapToCopy: '\u0627\u0646\u0642\u0631 \u0644\u0644\u0646\u0633\u062e', copySig: '\u0646\u0633\u062e \u0627\u0644\u062a\u0648\u0642\u064a\u0639',
+    bmsSignature: '\u062a\u0648\u0642\u064a\u0639 BMS', sigBase64: '\u0627\u0644\u062a\u0648\u0642\u064a\u0639 (base64)', tapToCopy: '\u0627\u0646\u0642\u0631 \u0644\u0644\u0646\u0633\u062e', copySig: '\u0646\u0633\u062e \u0627\u0644\u062a\u0648\u0642\u064a\u0639', sha256: 'SHA-256',
     settings: '\u0625\u0639\u062f\u0627\u062f\u0627\u062a', version: '\u0627\u0644\u0625\u0635\u062f\u0627\u0631', language: '\u0627\u0644\u0644\u063a\u0629', seedLanguage: '\u0644\u063a\u0629 \u0627\u0644\u0628\u0630\u0631\u0629',
     onlineKeygenTitle: '\u0627\u0644\u0634\u0628\u0643\u0629 \u0645\u062a\u0635\u0644\u0629!',
     onlineKeygenBody: '\u062c\u0647\u0627\u0632\u0643 \u0645\u062a\u0635\u0644 \u0628\u0627\u0644\u0625\u0646\u062a\u0631\u0646\u062a. \u0627\u0644\u0645\u0641\u0627\u062a\u064a\u062d \u0627\u0644\u0645\u064f\u0646\u0634\u0623\u0629 \u0639\u0628\u0631 \u0627\u0644\u0625\u0646\u062a\u0631\u0646\u062a \u0642\u062f \u064a\u062a\u0645 \u0627\u0639\u062a\u0631\u0627\u0636\u0647\u0627 \u0628\u0648\u0627\u0633\u0637\u0629 \u0628\u0631\u0627\u0645\u062c \u0636\u0627\u0631\u0629. \u0627\u0641\u0635\u0644 \u062c\u0645\u064a\u0639 \u0627\u0644\u0634\u0628\u0643\u0627\u062a (WiFi\u060c \u0627\u0644\u062e\u0644\u0648\u064a\u0629\u060c Bluetooth\u060c USB) \u0642\u0628\u0644 \u0627\u0644\u0645\u062a\u0627\u0628\u0639\u0629.',
@@ -1528,11 +1532,11 @@ const I18N = {
     receivingFountain: 'Fountain-code ontvangen...', urFailed: 'UR-decodering mislukt. Probeer opnieuw.', psbtParseError: 'PSBT-parseerfout: ',
     confirmTx: 'Transactie bevestigen', reviewBeforeSign: 'Controleer zorgvuldig voor het ondertekenen.',
     inputs: 'Invoer', output: 'Uitvoer', change: '(wisselgeld)', fee: 'Kosten', reject: 'Weigeren', sign: 'Ondertekenen', signingFailed: 'Ondertekening mislukt: ',
-    signedPsbt: 'Ondertekende PSBT', showQRDesc: 'Toon deze QR aan je BitClutch-app om uit te zenden.', done: 'Klaar',
+    signedPsbt: 'Ondertekende PSBT', showQRDesc: 'Laat je BitClutch-app deze QR-code scannen om de transactie uit te zenden.', scanComplete: 'Scan voltooid', scanSignatureDesc: 'Laat je BitClutch-app deze QR-code scannen om de handtekening te verzenden.',
     singleQR: 'Enkele QR', fountainKeepShowing: 'fountain-code \u2014 blijf tonen', frame: 'Frame',
     confirmBms: 'Berichtondertekening bevestigen', reviewMessage: 'Controleer het bericht voor ondertekening.',
     type: 'Type', bmsType: 'BMS (Bitcoin-bericht)', index: 'Index', address: 'Adres', message: 'Bericht',
-    bmsSignature: 'BMS-handtekening', sigBase64: 'Handtekening (base64)', tapToCopy: 'Tik om te kopi\u00ebren', copySig: 'Handtekening kopi\u00ebren',
+    bmsSignature: 'BMS-handtekening', sigBase64: 'Handtekening (base64)', tapToCopy: 'Tik om te kopi\u00ebren', copySig: 'Handtekening kopi\u00ebren', sha256: 'SHA-256',
     settings: 'Instellingen', version: 'Versie', language: 'Taal', seedLanguage: 'Zaadtaal',
     onlineKeygenTitle: 'Netwerk verbonden!',
     onlineKeygenBody: 'Uw apparaat is verbonden met internet. Online gegenereerde sleutels kunnen worden onderschept door malware. Verbreek ALLE netwerken (WiFi, mobiel, Bluetooth, USB) voordat u doorgaat.',
@@ -1605,11 +1609,11 @@ const I18N = {
     receivingFountain: 'Fountain \u0915\u094b\u0921 \u092a\u094d\u0930\u093e\u092a\u094d\u0924 \u0939\u094b \u0930\u0939\u093e...', urFailed: 'UR \u0921\u093f\u0915\u094b\u0921 \u0935\u093f\u092b\u0932\u0964 \u092b\u093f\u0930 \u092a\u094d\u0930\u092f\u093e\u0938 \u0915\u0930\u0947\u0902\u0964', psbtParseError: 'PSBT \u092a\u093e\u0930\u094d\u0938 \u0924\u094d\u0930\u0941\u091f\u093f: ',
     confirmTx: '\u0932\u0947\u0928\u0926\u0947\u0928 \u0915\u0940 \u092a\u0941\u0937\u094d\u091f\u093f', reviewBeforeSign: '\u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930 \u0915\u0930\u0928\u0947 \u0938\u0947 \u092a\u0939\u0932\u0947 \u0927\u094d\u092f\u093e\u0928 \u0938\u0947 \u091c\u093e\u0902\u091a\u0947\u0902\u0964',
     inputs: '\u0907\u0928\u092a\u0941\u091f', output: '\u0906\u0909\u091f\u092a\u0941\u091f', change: '(\u092c\u093e\u0915\u0940)', fee: '\u0936\u0941\u0932\u094d\u0915', reject: '\u0905\u0938\u094d\u0935\u0940\u0915\u093e\u0930', sign: '\u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930', signingFailed: '\u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930 \u0935\u093f\u092b\u0932: ',
-    signedPsbt: '\u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930\u093f\u0924 PSBT', showQRDesc: '\u092c\u094d\u0930\u0949\u0921\u0915\u093e\u0938\u094d\u091f \u0915\u0947 \u0932\u093f\u090f BitClutch \u0910\u092a \u0915\u094b \u092f\u0939 QR \u0926\u093f\u0916\u093e\u090f\u0902\u0964', done: '\u0939\u094b \u0917\u092f\u093e',
+    signedPsbt: '\u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930\u093f\u0924 PSBT', showQRDesc: '\u0932\u0947\u0928-\u0926\u0947\u0928 \u092a\u094d\u0930\u0938\u093e\u0930\u093f\u0924 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f BitClutch \u0910\u092a \u0938\u0947 \u092f\u0939 QR \u0915\u094b\u0921 \u0938\u094d\u0915\u0948\u0928 \u0915\u0930\u0935\u093e\u090f\u0902\u0964', scanComplete: '\u0938\u094d\u0915\u0948\u0928 \u092a\u0942\u0930\u093e', scanSignatureDesc: '\u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930 \u092d\u0947\u091c\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f BitClutch \u0910\u092a \u0938\u0947 \u092f\u0939 QR \u0915\u094b\u0921 \u0938\u094d\u0915\u0948\u0928 \u0915\u0930\u0935\u093e\u090f\u0902\u0964',
     singleQR: '\u090f\u0915\u0932 QR', fountainKeepShowing: 'fountain \u0915\u094b\u0921 \u2014 \u0926\u093f\u0916\u093e\u0924\u0947 \u0930\u0939\u0947\u0902', frame: '\u092b\u094d\u0930\u0947\u092e',
     confirmBms: '\u0938\u0902\u0926\u0947\u0936 \u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930 \u0915\u0940 \u092a\u0941\u0937\u094d\u091f\u093f', reviewMessage: '\u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930 \u0938\u0947 \u092a\u0939\u0932\u0947 \u0938\u0902\u0926\u0947\u0936 \u091c\u093e\u0902\u091a\u0947\u0902\u0964',
     type: '\u092a\u094d\u0930\u0915\u093e\u0930', bmsType: 'BMS (Bitcoin \u0938\u0902\u0926\u0947\u0936)', index: '\u0907\u0902\u0921\u0947\u0915\u094d\u0938', address: '\u092a\u0924\u093e', message: '\u0938\u0902\u0926\u0947\u0936',
-    bmsSignature: 'BMS \u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930', sigBase64: '\u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930 (base64)', tapToCopy: '\u0915\u0949\u092a\u0940 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u091f\u0948\u092a \u0915\u0930\u0947\u0902', copySig: '\u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930 \u0915\u0949\u092a\u0940 \u0915\u0930\u0947\u0902',
+    bmsSignature: 'BMS \u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930', sigBase64: '\u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930 (base64)', tapToCopy: '\u0915\u0949\u092a\u0940 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u091f\u0948\u092a \u0915\u0930\u0947\u0902', copySig: '\u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930 \u0915\u0949\u092a\u0940 \u0915\u0930\u0947\u0902', sha256: 'SHA-256',
     settings: '\u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938', version: '\u0938\u0902\u0938\u094d\u0915\u0930\u0923', language: '\u092d\u093e\u0937\u093e', seedLanguage: '\u0938\u0940\u0921 \u092d\u093e\u0937\u093e',
     onlineKeygenTitle: '\u0928\u0947\u091f\u0935\u0930\u094d\u0915 \u0915\u0928\u0947\u0915\u094d\u091f\u0947\u0921!',
     onlineKeygenBody: '\u0906\u092a\u0915\u093e \u0921\u093f\u0935\u093e\u0907\u0938 \u0907\u0902\u091f\u0930\u0928\u0947\u091f \u0938\u0947 \u091c\u0941\u0921\u093c\u093e \u0939\u0948\u0964 \u0911\u0928\u0932\u093e\u0907\u0928 \u091c\u0947\u0928\u0930\u0947\u091f \u0915\u0940 \u0917\u0908 \u0915\u0941\u0902\u091c\u093f\u092f\u093e\u0901 \u092e\u0948\u0932\u0935\u0947\u092f\u0930 \u0926\u094d\u0935\u093e\u0930\u093e \u0907\u0902\u091f\u0930\u0938\u0947\u092a\u094d\u091f \u0939\u094b \u0938\u0915\u0924\u0940 \u0939\u0948\u0902\u0964 \u0906\u0917\u0947 \u092c\u0922\u093c\u0928\u0947 \u0938\u0947 \u092a\u0939\u0932\u0947 \u0938\u092d\u0940 \u0928\u0947\u091f\u0935\u0930\u094d\u0915 (WiFi, \u092e\u094b\u092c\u093e\u0907\u0932, Bluetooth, USB) \u0921\u093f\u0938\u094d\u0915\u0928\u0947\u0915\u094d\u091f \u0915\u0930\u0947\u0902\u0964',
@@ -2941,7 +2945,7 @@ function renderShowQR() {
       <div class="qr-container" id="signed-qr"></div>
       <p id="qr-frame-info" class="text-muted mt-12"></p>
     </div>
-    <button class="btn btn-primary" data-action="finishSign">${t('done')}</button>`;
+    <button class="btn btn-primary" data-action="finishSign">${t('scanComplete')}</button>`;
 }
 
 function renderConfirmBms() {
@@ -2968,8 +2972,9 @@ function renderConfirmBms() {
       <div class="tx-row"><span class="tx-label">${t('address')}</span><span class="tx-value" style="font-size:11px;word-break:break-all">${escapeHtml(addrPreview)}</span></div>
       <div style="margin-top:12px">
         <span class="label">${t('message')}</span>
-        <div class="tx-address" style="padding:10px;background:var(--surface-hover);border-radius:8px">${escapeHtml(req.message)}</div>
+        <div class="tx-address" style="padding:10px;background:var(--surface-hover);border-radius:8px;white-space:pre-wrap;max-height:200px;overflow-y:auto">${escapeHtml(req.message)}</div>
       </div>
+      <div class="tx-row" style="margin-top:8px"><span class="tx-label">${t('sha256')}</span><span class="tx-value" style="font-size:10px;word-break:break-all;font-family:monospace">${bytesToHex(sha256(utf8ToBytes(req.message)))}</span></div>
     </div>
     <div style="display:flex; gap:12px">
       <button class="btn btn-secondary" style="flex:1" data-action="rejectBms">${t('reject')}</button>
@@ -2986,17 +2991,18 @@ function renderBmsResult() {
       <div class="tx-row"><span class="tx-label">${t('address')}</span><span class="tx-value" style="font-size:11px">${escapeHtml(r.address)}</span></div>
       <div style="margin-top:12px">
         <span class="label">${t('message')}</span>
-        <div class="tx-address">${escapeHtml(r.message)}</div>
+        <div class="tx-address" style="white-space:pre-wrap;max-height:120px;overflow-y:auto">${escapeHtml(r.message)}</div>
       </div>
       <div style="margin-top:12px">
         <span class="label">${t('sigBase64')}</span>
         <div class="tx-address" id="bms-sig-text" style="cursor:pointer" data-action="copyBmsSig" title="${t('tapToCopy')}">${escapeHtml(r.signature)}</div>
       </div>
       <div class="qr-container mt-12" id="bms-qr"></div>
+      <p class="text-muted mt-12" style="text-align:center;font-size:12px">${t('scanSignatureDesc')}</p>
     </div>
     <div class="gap-12">
       <button class="btn btn-secondary" data-action="copyBmsSig">${t('copySig')}</button>
-      <button class="btn btn-primary" data-action="bmsDone">${t('done')}</button>
+      <button class="btn btn-primary" data-action="bmsDone">${t('scanComplete')}</button>
     </div>`;
 }
 
