@@ -3413,25 +3413,42 @@ function handleQRData(data) {
   const lower = data.toLowerCase();
 
   if (lower.startsWith('ur:')) {
+    // Skip duplicate frames (same part scanned consecutively)
+    if (S._lastURPart === lower) return;
+    S._lastURPart = lower;
+
     // BC-UR (single or multi-part)
+    let accepted = false;
     try {
-      S.urDecoder.receivePart(lower);
-    } catch { /* ignore invalid parts */ }
+      accepted = S.urDecoder.receivePart(lower);
+    } catch (e) {
+      updateScanStatus('UR error: ' + (e.message || e));
+      return;
+    }
 
     if (S.urDecoder.isComplete()) {
       if (S.urDecoder.isSuccess()) {
-        const ur = S.urDecoder.resultUR();
-        const payload = ur.decodeCBOR();
-        stopCamera();
-        onPsbtReceived(payload);
+        try {
+          const ur = S.urDecoder.resultUR();
+          const payload = ur.decodeCBOR();
+          stopCamera();
+          onPsbtReceived(payload);
+        } catch (e) {
+          updateScanStatus('CBOR decode error: ' + (e.message || e));
+          S.urDecoder = new URDecoder();
+          S._lastURPart = null;
+        }
       } else {
         updateScanStatus(t('urFailed'));
         S.urDecoder = new URDecoder();
+        S._lastURPart = null;
       }
     } else {
       // Show progress for multi-part
       const pct = Math.round(S.urDecoder.estimatedPercentComplete() * 100);
-      updateScanStatus(`${t('receivingFountain')} ${pct}%`);
+      const parts = S.urDecoder.expectedPartCount();
+      const received = S.urDecoder.receivedPartIndexes().length;
+      updateScanStatus(`${t('receivingFountain')} ${pct}% (${received}/${parts}${accepted ? '' : ' dup'})`);
     }
   } else {
     // Try BMS JSON: {"type":"bms","message":"...","index":0}
