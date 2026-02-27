@@ -1,0 +1,26 @@
+{
+  "name": "bitclutch-signer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Air-gapped Bitcoin signing device PWA",
+  "scripts": {
+    "bundle": "node build/bundle-libs.mjs",
+    "build-html": "node build/build-html.mjs",
+    "hashes": "node build/compute-hashes.mjs",
+    "build": "npm run bundle && npm run build-html && npm run hashes",
+    "dev": "npx serve . -l 5173"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0"
+  },
+  "dependencies": {
+    "@scure/btc-signer": "^1.5.0",
+    "@noble/curves": "^1.8.0",
+    "@noble/hashes": "^1.6.0",
+    "@scure/bip39": "^1.4.0",
+    "@scure/bip32": "^1.5.0",
+    "@ngraveio/bc-ur": "^1.1.0",
+    "jsqr": "^1.4.0",
+    "qrcode-generator": "^1.4.4"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "version": "1.0.0",
+  "generated": "2026-02-27T11:25:12.725Z",
+  "files": {
+    "bitclutch-signer.html": "9a862812755f38cf6d9c7d87b112f4faab0c92b185ebb0ff43ac09f9936be1f2",
+    "app.js": "949dc6a079844686d236aa7b098f51ecaa0a93e4e8417ef8c3f80cfed685535c",
+    "lib/bundle.js": "2d24857548d649d659fcfafe2fac90ca08558b9dcde3d0c9aa68a130484e5859"
+  }
+}
