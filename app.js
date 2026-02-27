@@ -21,8 +21,9 @@ const {
 // ── State ──────────────────────────────────────────
 const S = {
   tab: 'key',            // key | sign | settings
-  screen: 'loading',     // loading | setup | unlock | home | dice | coin | mnemonic | set-pass | import | scan | confirm-tx | show-qr | confirm-bms | bms-result | view-source | security | guide | settings-main
-  xprv: null,            // decrypted account xprv (in memory only)
+  screen: 'loading',     // loading | setup | home | dice | coin | mnemonic | set-pass | import | scan | confirm-tx | enter-pass | show-qr | confirm-bms | bms-result | view-source | security | guide | settings-main
+  xprv: null,            // decrypted account xprv (in memory only, cleared after signing)
+  signingKeyId: null,          // set per-signing session (auto-detected or user-selected)
   network: localStorage.getItem('signer-network') || 'main',
   lang: localStorage.getItem('signer-lang') || (navigator.language.startsWith('ko') ? 'ko' : 'en'),
   seedLang: localStorage.getItem('signer-seed-lang') || 'en', // seed phrase wordlist language
@@ -44,6 +45,8 @@ const S = {
   bmsResult: null,       // {message, signature, address} after BMS signing
   importWordCount: 12,   // 12 or 24 for import screen
   theme: localStorage.getItem('signer-theme') || 'auto', // auto | light | dark
+  pendingAction: null,   // 'sign-tx' | 'sign-bms' — set before enter-pass screen
+  expandedKeyId: null,   // which key card has xpub expanded
 };
 
 const DICE_REQUIRED = 99;
@@ -53,7 +56,7 @@ const PBKDF2_ITERATIONS = 600000;
 // Build-time SHA-256 hash for lib/bundle.js (inserted by compute-hashes.mjs)
 // NOTE: app.js cannot contain its own hash (circular). Its hash is in hashes.json.
 const BUILD_LIB_HASH = '2d24857548d649d659fcfafe2fac90ca08558b9dcde3d0c9aa68a130484e5859';
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '0.2.0';
 const $ = (id) => document.getElementById(id);
 const $screen = () => $('screen');
 
@@ -68,7 +71,7 @@ const I18N = {
     tabSign: 'Sign',
     tabSettings: 'Settings',
     // Setup
-    createKeys: 'Create Your Keys',
+    createKeys: 'Create Your Key',
     setupDesc: 'Generate a new key using physical entropy,<br>or import an existing seed phrase.',
     diceBtn: 'Dice (99 rolls)',
     coinBtn: 'Coin flip (256 flips)',
@@ -90,6 +93,10 @@ const I18N = {
     yourKey: 'Your Key',
     network: 'Network',
     fingerprint: 'Fingerprint',
+    keyCreated: 'Created',
+    lastOnline: 'Last Online',
+    neverOnline: 'Never (safe)',
+    onlineAfterKey: 'Key may be compromised! Generate a new key on a clean device.',
     accountXpub: 'Account xpub',
     showXpubQR: 'Show xpub QR',
     lockBtn: 'Lock',
@@ -187,10 +194,10 @@ const I18N = {
     themeLight: 'Light',
     themeDark: 'Dark',
     testnetWarningTitle: 'Switch to Testnet?',
-    testnetWarningBody: 'Testnet is for developers only. Testnet coins have no real value. Keys generated on testnet cannot be used on mainnet.',
+    testnetWarningBody: 'Testnet is for developers only. Testnet coins have no real value. A key generated on testnet cannot be used on mainnet.',
     switchTestnet: 'Switch to Testnet',
     onlineKeygenTitle: 'Network Connected!',
-    onlineKeygenBody: 'Your device is connected to the internet. Keys generated while online can be intercepted by malware. Disconnect ALL networks (WiFi, cellular, Bluetooth, USB) before proceeding.',
+    onlineKeygenBody: 'Your device is connected to the internet. A key generated while online can be intercepted by malware. Disconnect ALL networks (WiFi, cellular, Bluetooth, USB) before proceeding.',
     proceedAnyway: 'Proceed anyway (unsafe)',
     installGuide: 'Installation Guide',
     viewSource: 'Verify Source Integrity',
@@ -228,7 +235,7 @@ const I18N = {
     warning: 'Warning:',
     clearDataWarning: 'Clearing browser data will permanently delete your encrypted key. Always keep your seed phrase backed up offline.',
     autoLock: 'Auto-lock:',
-    autoLockDesc: 'Keys are wiped from memory after 5 minutes of inactivity.',
+    autoLockDesc: 'Key is wiped from memory after 5 minutes of inactivity.',
     // Key storage descriptions
     storageEncKey: 'Encrypted private key (AES-256-GCM)',
     storageXpub: 'Account extended public key',
@@ -236,6 +243,8 @@ const I18N = {
     storageNet: 'Network setting (main/test)',
     storageLang: 'UI language',
     storageSeedLang: 'Seed phrase language',
+    storageKeyCreated: 'Key creation timestamp',
+    storageLastOnline: 'Last network detection timestamp',
     // Guide
     guideTitle: 'Installation Guide',
     guideDesc: 'Install BitClutch Signer as an offline app, then enable airplane mode before use.',
@@ -255,8 +264,24 @@ const I18N = {
     noSignature: 'No signature.',
     loading: 'Loading...',
     bannerWarn: 'NETWORK DETECTED \u2014 Disconnect all networks before generating keys.',
-    bannerOnline: 'NETWORK CONNECTED \u2014 Disconnect NOW and NEVER reconnect this device. Keys may already be exposed.',
+    bannerOnline: 'NETWORK CONNECTED \u2014 Disconnect NOW and NEVER reconnect this device. Your key may already be exposed.',
     bannerOffline: 'No wireless network detected. Verify Bluetooth, NFC, and USB data cables are also disconnected.',
+    // Multi-key
+    addNewKey: '+ Add New Key',
+    noKeysYet: 'No keys yet. Create or import one to get started.',
+    enterPassToSign: 'Enter passphrase to sign',
+    passCorrect: 'Passphrase is correct!',
+    passWrong: 'Wrong passphrase.',
+    verifyPass: 'Verify Passphrase',
+    keyAlreadyExists: 'A key with this fingerprint already exists.',
+    keyN: 'Key #',
+    storageKeys: 'Encrypted key array (AES-256-GCM)',
+    deleteKeyConfirm1: 'Delete this key? This cannot be undone.\nMake sure you have your seed phrase backed up!',
+    deleteKeyConfirm2: 'Are you absolutely sure? Your Bitcoin will be LOST if you have no backup.',
+    selectKeyForBms: 'Select key to sign with',
+    selectKeyAtSign: '(key will be selected at signing)',
+    renameKeyTitle: 'Rename Key',
+    save: 'Save',
   },
   ko: {
     unlocked: '잠금 해제',
@@ -284,6 +309,10 @@ const I18N = {
     yourKey: '내 키',
     network: '네트워크',
     fingerprint: '지문',
+    keyCreated: '생성일',
+    lastOnline: '마지막 온라인',
+    neverOnline: '없음 (안전)',
+    onlineAfterKey: '키가 노출되었을 수 있습니다! 안전한 기기에서 새 키를 생성하세요.',
     accountXpub: '계정 xpub',
     showXpubQR: 'xpub QR 보기',
     lockBtn: '잠금',
@@ -417,6 +446,8 @@ const I18N = {
     storageNet: '네트워크 설정 (main/test)',
     storageLang: 'UI 언어',
     storageSeedLang: '시드 구문 언어',
+    storageKeyCreated: '키 생성 타임스탬프',
+    storageLastOnline: '네트워크 감지 타임스탬프',
     guideTitle: '설치 가이드',
     guideDesc: 'BitClutch Signer를 오프라인 앱으로 설치한 후, 사용 전에 비행기 모드를 활성화하세요.',
     detected: '감지됨',
@@ -436,15 +467,30 @@ const I18N = {
     bannerWarn: '\ub124\ud2b8\uc6cc\ud06c \uac10\uc9c0\ub428 \u2014 \ud0a4 \uc0dd\uc131 \uc804\uc5d0 \ubaa8\ub4e0 \ub124\ud2b8\uc6cc\ud06c\ub97c \ub04a\uc73c\uc138\uc694.',
     bannerOnline: '\ub124\ud2b8\uc6cc\ud06c \uc5f0\uacb0\ub428 \u2014 \uc9c0\uae08 \uc989\uc2dc \ub04a\uace0 \uc774 \uae30\uae30\ub97c \uc808\ub300 \ub2e4\uc2dc \uc5f0\uacb0\ud558\uc9c0 \ub9c8\uc138\uc694. \ud0a4\uac00 \uc774\ubbf8 \ub178\ucd9c\ub418\uc5c8\uc744 \uc218 \uc788\uc2b5\ub2c8\ub2e4.',
     bannerOffline: '\ubb34\uc120 \ub124\ud2b8\uc6cc\ud06c \uac10\uc9c0\ub418\uc9c0 \uc54a\uc74c. \ube14\ub8e8\ud22c\uc2a4, NFC, USB \ub370\uc774\ud130 \ucf00\uc774\ube14\ub3c4 \ubd84\ub9ac\ub418\uc5c8\ub294\uc9c0 \ud655\uc778\ud558\uc138\uc694.',
+    addNewKey: '+ 새 키 추가',
+    noKeysYet: '키가 없습니다. 새로 생성하거나 가져오세요.',
+    enterPassToSign: '서명을 위해 비밀번호를 입력하세요',
+    passCorrect: '비밀번호가 올바릅니다!',
+    passWrong: '비밀번호가 틀렸습니다.',
+    verifyPass: '비밀번호 확인',
+    keyAlreadyExists: '이 지문의 키가 이미 존재합니다.',
+    keyN: '키 #',
+    storageKeys: '암호화된 키 배열 (AES-256-GCM)',
+    deleteKeyConfirm1: '이 키를 삭제하시겠습니까? 되돌릴 수 없습니다.\n시드 구문 백업을 확인하세요!',
+    deleteKeyConfirm2: '정말 확실합니까? 백업이 없으면 비트코인을 잃게 됩니다.',
+    selectKeyForBms: '서명에 사용할 키를 선택하세요',
+    selectKeyAtSign: '(서명 시 키를 선택합니다)',
+    renameKeyTitle: '키 이름 변경',
+    save: '저장',
   },
   es: {
     unlocked: 'Desbloqueado', locked: 'Bloqueado',
     tabKey: 'Clave', tabSign: 'Firmar', tabSettings: 'Ajustes',
-    createKeys: 'Crea tus claves',
+    createKeys: 'Crea tu clave',
     setupDesc: 'Genera una nueva clave con entrop\u00eda f\u00edsica,<br>o importa una frase semilla existente.',
     diceBtn: 'Dado (99 lanzamientos)', coinBtn: 'Moneda (256 lanzamientos)', importBtn: 'Importar frase semilla',
     enterPassphrase: 'Introduce la contrase\u00f1a para desbloquear', passphrase: 'Contrase\u00f1a', unlock: 'Desbloquear', wrongPassphrase: 'Contrase\u00f1a incorrecta.',
-    yourKey: 'Tu clave', network: 'Red', fingerprint: 'Huella digital', accountXpub: 'xpub de cuenta',
+    yourKey: 'Tu clave', network: 'Red', fingerprint: 'Huella digital', keyCreated: 'Creada', lastOnline: '\u00dalt. en l\u00ednea', neverOnline: 'Nunca (seguro)', onlineAfterKey: 'La clave puede estar comprometida. Genera una nueva en un dispositivo limpio.', accountXpub: 'xpub de cuenta',
     showXpubQR: 'Mostrar QR xpub', lockBtn: 'Bloquear', mainnet: 'Mainnet', testnet: 'Testnet',
     diceTitle: 'Generaci\u00f3n con dado', diceDesc: 'Lanza un dado f\u00edsico real y toca el resultado.',
     progress: 'Progreso', undoLast: 'Deshacer', cancel: 'Cancelar', ok: 'OK',
@@ -499,7 +545,7 @@ const I18N = {
     warning: 'Advertencia:', clearDataWarning: 'Borrar los datos del navegador eliminar\u00e1 permanentemente tu clave cifrada. Siempre mant\u00e9n tu frase semilla respaldada sin conexi\u00f3n.',
     autoLock: 'Bloqueo autom\u00e1tico:', autoLockDesc: 'Las claves se borran de la memoria tras 5 minutos de inactividad.',
     storageEncKey: 'Clave privada cifrada (AES-256-GCM)', storageXpub: 'Clave p\u00fablica extendida de cuenta', storageFp: 'Huella BIP-32',
-    storageNet: 'Configuraci\u00f3n de red (main/test)', storageLang: 'Idioma de la interfaz', storageSeedLang: 'Idioma de frase semilla',
+    storageNet: 'Configuraci\u00f3n de red (main/test)', storageLang: 'Idioma de la interfaz', storageSeedLang: 'Idioma de frase semilla', storageKeyCreated: 'Marca de tiempo de creaci\u00f3n', storageLastOnline: 'Marca de tiempo de red',
     guideTitle: 'Gu\u00eda de instalaci\u00f3n', guideDesc: 'Instala BitClutch Signer como app sin conexi\u00f3n, luego activa el modo avi\u00f3n antes de usarla.',
     detected: 'Detectado',
     guideIosSafari: '<strong>Instalar como app sin conexi\u00f3n:</strong><ol><li>Abre esta p\u00e1gina en <strong>Safari</strong></li><li>Toca el bot\u00f3n <strong>Share</strong> (cuadro con flecha)</li><li>Despl\u00e1zate hacia abajo y toca <strong>"Add to Home Screen"</strong></li><li>Toca <strong>"Add"</strong> en la esquina superior derecha</li></ol><strong>Activar modo avi\u00f3n:</strong><ol><li>Desliza hacia abajo desde la esquina superior derecha (o hacia arriba desde abajo en iPhones antiguos)</li><li>Toca el <strong>icono de avi\u00f3n</strong> para activarlo</li><li>Aseg\u00farate de que Wi-Fi y Bluetooth tambi\u00e9n est\u00e9n apagados</li></ol>',
@@ -522,7 +568,7 @@ const I18N = {
     setupDesc: '\u7269\u7406\u7684\u30a8\u30f3\u30c8\u30ed\u30d4\u30fc\u3067\u65b0\u3057\u3044\u9375\u3092\u751f\u6210\u3059\u308b\u304b\u3001<br>\u65e2\u5b58\u306e\u30b7\u30fc\u30c9\u30d5\u30ec\u30fc\u30ba\u3092\u30a4\u30f3\u30dd\u30fc\u30c8\u3057\u307e\u3059\u3002',
     diceBtn: '\u30b5\u30a4\u30b3\u30ed (99\u56de)', coinBtn: '\u30b3\u30a4\u30f3\u6295\u3052 (256\u56de)', importBtn: '\u30b7\u30fc\u30c9\u30d5\u30ec\u30fc\u30ba\u3092\u30a4\u30f3\u30dd\u30fc\u30c8',
     enterPassphrase: '\u30d1\u30b9\u30d5\u30ec\u30fc\u30ba\u3092\u5165\u529b\u3057\u3066\u30ed\u30c3\u30af\u89e3\u9664', passphrase: '\u30d1\u30b9\u30d5\u30ec\u30fc\u30ba', unlock: '\u30ed\u30c3\u30af\u89e3\u9664', wrongPassphrase: '\u30d1\u30b9\u30d5\u30ec\u30fc\u30ba\u304c\u9055\u3044\u307e\u3059\u3002',
-    yourKey: '\u3042\u306a\u305f\u306e\u9375', network: '\u30cd\u30c3\u30c8\u30ef\u30fc\u30af', fingerprint: '\u30d5\u30a3\u30f3\u30ac\u30fc\u30d7\u30ea\u30f3\u30c8', accountXpub: '\u30a2\u30ab\u30a6\u30f3\u30c8xpub',
+    yourKey: '\u3042\u306a\u305f\u306e\u9375', network: '\u30cd\u30c3\u30c8\u30ef\u30fc\u30af', fingerprint: '\u30d5\u30a3\u30f3\u30ac\u30fc\u30d7\u30ea\u30f3\u30c8', keyCreated: '\u4f5c\u6210\u65e5', lastOnline: '\u6700\u7d42\u30aa\u30f3\u30e9\u30a4\u30f3', neverOnline: '\u306a\u3057 (\u5b89\u5168)', onlineAfterKey: '\u9375\u4f5c\u6210\u5f8c\u306b\u30aa\u30f3\u30e9\u30a4\u30f3\u691c\u51fa', accountXpub: '\u30a2\u30ab\u30a6\u30f3\u30c8xpub',
     showXpubQR: 'xpub QR\u3092\u8868\u793a', lockBtn: '\u30ed\u30c3\u30af', mainnet: '\u30e1\u30a4\u30f3\u30cd\u30c3\u30c8', testnet: '\u30c6\u30b9\u30c8\u30cd\u30c3\u30c8',
     diceTitle: '\u30b5\u30a4\u30b3\u30ed\u9375\u751f\u6210', diceDesc: '\u5b9f\u969b\u306e6\u9762\u30b5\u30a4\u30b3\u30ed\u3092\u632f\u3063\u3066\u7d50\u679c\u3092\u30bf\u30c3\u30d7\u3057\u3066\u304f\u3060\u3055\u3044\u3002',
     progress: '\u9032\u6357', undoLast: '\u5143\u306b\u623b\u3059', cancel: '\u30ad\u30e3\u30f3\u30bb\u30eb', ok: 'OK',
@@ -577,7 +623,7 @@ const I18N = {
     warning: '\u8b66\u544a:', clearDataWarning: '\u30d6\u30e9\u30a6\u30b6\u30c7\u30fc\u30bf\u3092\u524a\u9664\u3059\u308b\u3068\u6697\u53f7\u5316\u3055\u308c\u305f\u9375\u304c\u6c38\u4e45\u306b\u524a\u9664\u3055\u308c\u307e\u3059\u3002\u30b7\u30fc\u30c9\u30d5\u30ec\u30fc\u30ba\u3092\u5e38\u306b\u30aa\u30d5\u30e9\u30a4\u30f3\u3067\u30d0\u30c3\u30af\u30a2\u30c3\u30d7\u3057\u3066\u304f\u3060\u3055\u3044\u3002',
     autoLock: '\u81ea\u52d5\u30ed\u30c3\u30af:', autoLockDesc: '5\u5206\u9593\u64cd\u4f5c\u304c\u306a\u3044\u3068\u30e1\u30e2\u30ea\u304b\u3089\u9375\u304c\u524a\u9664\u3055\u308c\u307e\u3059\u3002',
     storageEncKey: '\u6697\u53f7\u5316\u3055\u308c\u305f\u79d8\u5bc6\u9375 (AES-256-GCM)', storageXpub: '\u30a2\u30ab\u30a6\u30f3\u30c8\u62e1\u5f35\u516c\u958b\u9375', storageFp: 'BIP-32\u30d5\u30a3\u30f3\u30ac\u30fc\u30d7\u30ea\u30f3\u30c8',
-    storageNet: '\u30cd\u30c3\u30c8\u30ef\u30fc\u30af\u8a2d\u5b9a (main/test)', storageLang: 'UI\u8a00\u8a9e', storageSeedLang: '\u30b7\u30fc\u30c9\u30d5\u30ec\u30fc\u30ba\u8a00\u8a9e',
+    storageNet: '\u30cd\u30c3\u30c8\u30ef\u30fc\u30af\u8a2d\u5b9a (main/test)', storageLang: 'UI\u8a00\u8a9e', storageSeedLang: '\u30b7\u30fc\u30c9\u30d5\u30ec\u30fc\u30ba\u8a00\u8a9e', storageKeyCreated: '\u9375\u4f5c\u6210\u65e5\u6642', storageLastOnline: '\u30cd\u30c3\u30c8\u30ef\u30fc\u30af\u691c\u51fa\u65e5',
     guideTitle: '\u30a4\u30f3\u30b9\u30c8\u30fc\u30eb\u30ac\u30a4\u30c9', guideDesc: 'BitClutch Signer\u3092\u30aa\u30d5\u30e9\u30a4\u30f3\u30a2\u30d7\u30ea\u3068\u3057\u3066\u30a4\u30f3\u30b9\u30c8\u30fc\u30eb\u3057\u3001\u4f7f\u7528\u524d\u306b\u6a5f\u5185\u30e2\u30fc\u30c9\u3092\u6709\u52b9\u306b\u3057\u3066\u304f\u3060\u3055\u3044\u3002',
     detected: '\u691c\u51fa',
     guideIosSafari: '<strong>\u30aa\u30d5\u30e9\u30a4\u30f3\u30a2\u30d7\u30ea\u3068\u3057\u3066\u30a4\u30f3\u30b9\u30c8\u30fc\u30eb:</strong><ol><li><strong>Safari</strong>\u3067\u3053\u306e\u30da\u30fc\u30b8\u3092\u958b\u304d\u307e\u3059</li><li><strong>Share</strong>\u30dc\u30bf\u30f3\uff08\u77e2\u5370\u4ed8\u304d\u306e\u56db\u89d2\uff09\u3092\u30bf\u30c3\u30d7\u3057\u307e\u3059</li><li>\u4e0b\u306b\u30b9\u30af\u30ed\u30fc\u30eb\u3057\u3066<strong>\u201cAdd to Home Screen\u201d</strong>\u3092\u30bf\u30c3\u30d7\u3057\u307e\u3059</li><li>\u53f3\u4e0a\u306e<strong>\u201cAdd\u201d</strong>\u3092\u30bf\u30c3\u30d7\u3057\u307e\u3059</li></ol><strong>\u6a5f\u5185\u30e2\u30fc\u30c9\u3092\u6709\u52b9\u306b\u3059\u308b:</strong><ol><li>\u53f3\u4e0a\u304b\u3089\u4e0b\u306b\u30b9\u30ef\u30a4\u30d7\u3057\u307e\u3059\uff08\u53e4\u3044iPhone\u3067\u306f\u4e0b\u304b\u3089\u4e0a\uff09</li><li><strong>\u98db\u884c\u6a5f\u30a2\u30a4\u30b3\u30f3</strong>\u3092\u30bf\u30c3\u30d7\u3057\u3066\u6709\u52b9\u306b\u3057\u307e\u3059</li><li>Wi-Fi\u3068Bluetooth\u3082\u30aa\u30d5\u306b\u306a\u3063\u3066\u3044\u308b\u3053\u3068\u3092\u78ba\u8a8d\u3057\u3066\u304f\u3060\u3055\u3044</li></ol>',
@@ -596,11 +642,11 @@ const I18N = {
   pt: {
     unlocked: 'Desbloqueado', locked: 'Bloqueado',
     tabKey: 'Chave', tabSign: 'Assinar', tabSettings: 'Config.',
-    createKeys: 'Crie suas chaves',
+    createKeys: 'Crie sua chave',
     setupDesc: 'Gere uma nova chave com entropia f\u00edsica,<br>ou importe uma frase semente existente.',
     diceBtn: 'Dado (99 lan\u00e7amentos)', coinBtn: 'Moeda (256 lan\u00e7amentos)', importBtn: 'Importar frase semente',
     enterPassphrase: 'Digite a senha para desbloquear', passphrase: 'Senha', unlock: 'Desbloquear', wrongPassphrase: 'Senha incorreta.',
-    yourKey: 'Sua chave', network: 'Rede', fingerprint: 'Impress\u00e3o digital', accountXpub: 'xpub da conta',
+    yourKey: 'Sua chave', network: 'Rede', fingerprint: 'Impress\u00e3o digital', keyCreated: 'Criada em', lastOnline: '\u00dalt. online', neverOnline: 'Nunca (seguro)', onlineAfterKey: 'Online detectado ap\u00f3s cria\u00e7\u00e3o', accountXpub: 'xpub da conta',
     showXpubQR: 'Mostrar QR xpub', lockBtn: 'Bloquear', mainnet: 'Mainnet', testnet: 'Testnet',
     diceTitle: 'Gera\u00e7\u00e3o com dado', diceDesc: 'Lance um dado f\u00edsico real e toque no resultado.',
     progress: 'Progresso', undoLast: 'Desfazer', cancel: 'Cancelar', ok: 'OK',
@@ -655,7 +701,7 @@ const I18N = {
     warning: 'Aviso:', clearDataWarning: 'Limpar dados do navegador excluir\u00e1 permanentemente sua chave criptografada. Sempre mantenha sua frase semente salva offline.',
     autoLock: 'Bloqueio autom\u00e1tico:', autoLockDesc: 'Chaves s\u00e3o removidas da mem\u00f3ria ap\u00f3s 5 minutos de inatividade.',
     storageEncKey: 'Chave privada criptografada (AES-256-GCM)', storageXpub: 'Chave p\u00fablica estendida da conta', storageFp: 'Impress\u00e3o BIP-32',
-    storageNet: 'Config. de rede (main/test)', storageLang: 'Idioma da interface', storageSeedLang: 'Idioma da frase semente',
+    storageNet: 'Config. de rede (main/test)', storageLang: 'Idioma da interface', storageSeedLang: 'Idioma da frase semente', storageKeyCreated: 'Data de criação da chave', storageLastOnline: 'Data de detecção de rede',
     guideTitle: 'Guia de instala\u00e7\u00e3o', guideDesc: 'Instale o BitClutch Signer como app offline, depois ative o modo avi\u00e3o antes de usar.',
     detected: 'Detectado',
     guideIosSafari: '<strong>Instalar como app offline:</strong><ol><li>Abra esta p\u00e1gina no <strong>Safari</strong></li><li>Toque no bot\u00e3o <strong>Share</strong> (caixa com seta)</li><li>Role para baixo e toque em <strong>"Add to Home Screen"</strong></li><li>Toque em <strong>"Add"</strong> no canto superior direito</li></ol><strong>Ativar modo avi\u00e3o:</strong><ol><li>Deslize para baixo a partir do canto superior direito (ou para cima a partir de baixo em iPhones antigos)</li><li>Toque no <strong>\u00edcone de avi\u00e3o</strong> para ativar</li><li>Certifique-se de que Wi-Fi e Bluetooth tamb\u00e9m estejam desligados</li></ol>',
@@ -678,7 +724,7 @@ const I18N = {
     setupDesc: 'Erstelle einen neuen Schl\u00fcssel mit physischer Entropie,<br>oder importiere eine bestehende Seed-Phrase.',
     diceBtn: 'W\u00fcrfel (99 W\u00fcrfe)', coinBtn: 'M\u00fcnze (256 W\u00fcrfe)', importBtn: 'Seed-Phrase importieren',
     enterPassphrase: 'Passwort eingeben zum Entsperren', passphrase: 'Passwort', unlock: 'Entsperren', wrongPassphrase: 'Falsches Passwort.',
-    yourKey: 'Dein Schl\u00fcssel', network: 'Netzwerk', fingerprint: 'Fingerabdruck', accountXpub: 'Konto-xpub',
+    yourKey: 'Dein Schl\u00fcssel', network: 'Netzwerk', fingerprint: 'Fingerabdruck', keyCreated: 'Erstellt', lastOnline: 'Zul. online', neverOnline: 'Nie (sicher)', onlineAfterKey: 'Online nach Erstellung erkannt', accountXpub: 'Konto-xpub',
     showXpubQR: 'xpub-QR anzeigen', lockBtn: 'Sperren', mainnet: 'Mainnet', testnet: 'Testnet',
     diceTitle: 'W\u00fcrfel-Schl\u00fcsselgenerierung', diceDesc: 'Wirf einen echten W\u00fcrfel und tippe das Ergebnis.',
     progress: 'Fortschritt', undoLast: 'R\u00fcckg\u00e4ngig', cancel: 'Abbrechen', ok: 'OK',
@@ -733,7 +779,7 @@ const I18N = {
     warning: 'Warnung:', clearDataWarning: 'Browserdaten l\u00f6schen entfernt dauerhaft deinen verschl\u00fcsselten Schl\u00fcssel. Halte deine Seed-Phrase immer offline gesichert.',
     autoLock: 'Auto-Sperre:', autoLockDesc: 'Schl\u00fcssel werden nach 5 Minuten Inaktivit\u00e4t aus dem Speicher gel\u00f6scht.',
     storageEncKey: 'Verschl\u00fcsselter privater Schl\u00fcssel (AES-256-GCM)', storageXpub: 'Erweiterter \u00f6ffentlicher Kontoschl\u00fcssel', storageFp: 'BIP-32-Fingerabdruck',
-    storageNet: 'Netzwerkeinstellung (main/test)', storageLang: 'Benutzeroberfl\u00e4chensprache', storageSeedLang: 'Seed-Phrase-Sprache',
+    storageNet: 'Netzwerkeinstellung (main/test)', storageLang: 'Benutzeroberfl\u00e4chensprache', storageSeedLang: 'Seed-Phrase-Sprache', storageKeyCreated: 'Schl\u00fcssel-Erstellungsdatum', storageLastOnline: 'Netzwerk-Erkennungsdatum',
     guideTitle: 'Installationsanleitung', guideDesc: 'Installiere BitClutch Signer als Offline-App und aktiviere vor der Nutzung den Flugmodus.',
     detected: 'Erkannt',
     guideIosSafari: '<strong>Als Offline-App installieren:</strong><ol><li>\u00d6ffne diese Seite in <strong>Safari</strong></li><li>Tippe auf die <strong>Share</strong>-Taste (Quadrat mit Pfeil)</li><li>Scrolle nach unten und tippe auf <strong>"Add to Home Screen"</strong></li><li>Tippe oben rechts auf <strong>"Add"</strong></li></ol><strong>Flugmodus aktivieren:</strong><ol><li>Streiche von der oberen rechten Ecke nach unten (oder bei \u00e4lteren iPhones von unten nach oben)</li><li>Tippe auf das <strong>Flugzeug-Symbol</strong> zum Aktivieren</li><li>Stelle sicher, dass Wi-Fi und Bluetooth ebenfalls ausgeschaltet sind</li></ol>',
@@ -752,11 +798,11 @@ const I18N = {
   fr: {
     unlocked: 'D\u00e9verrouill\u00e9', locked: 'Verrouill\u00e9',
     tabKey: 'Cl\u00e9', tabSign: 'Signer', tabSettings: 'Param\u00e8tres',
-    createKeys: 'Cr\u00e9ez vos cl\u00e9s',
+    createKeys: 'Cr\u00e9ez votre cl\u00e9',
     setupDesc: 'G\u00e9n\u00e9rez une nouvelle cl\u00e9 avec de l\u2019entropie physique,<br>ou importez une phrase de r\u00e9cup\u00e9ration existante.',
     diceBtn: 'D\u00e9 (99 lancers)', coinBtn: 'Pi\u00e8ce (256 lancers)', importBtn: 'Importer phrase de r\u00e9cup\u00e9ration',
     enterPassphrase: 'Entrez le mot de passe pour d\u00e9verrouiller', passphrase: 'Mot de passe', unlock: 'D\u00e9verrouiller', wrongPassphrase: 'Mot de passe incorrect.',
-    yourKey: 'Votre cl\u00e9', network: 'R\u00e9seau', fingerprint: 'Empreinte', accountXpub: 'xpub du compte',
+    yourKey: 'Votre cl\u00e9', network: 'R\u00e9seau', fingerprint: 'Empreinte', keyCreated: 'Cr\u00e9\u00e9e le', lastOnline: 'Dern. en ligne', neverOnline: 'Jamais (s\u00fbr)', onlineAfterKey: 'En ligne d\u00e9tect\u00e9 apr\u00e8s cr\u00e9ation', accountXpub: 'xpub du compte',
     showXpubQR: 'Afficher QR xpub', lockBtn: 'Verrouiller', mainnet: 'Mainnet', testnet: 'Testnet',
     diceTitle: 'G\u00e9n\u00e9ration par d\u00e9', diceDesc: 'Lancez un vrai d\u00e9 physique et touchez le r\u00e9sultat.',
     progress: 'Progression', undoLast: 'Annuler', cancel: 'Annuler', ok: 'OK',
@@ -811,7 +857,7 @@ const I18N = {
     warning: 'Avertissement :', clearDataWarning: 'Effacer les donn\u00e9es du navigateur supprimera d\u00e9finitivement votre cl\u00e9 chiffr\u00e9e. Conservez toujours votre phrase hors ligne.',
     autoLock: 'Verrouillage auto :', autoLockDesc: 'Les cl\u00e9s sont effac\u00e9es de la m\u00e9moire apr\u00e8s 5 minutes d\u2019inactivit\u00e9.',
     storageEncKey: 'Cl\u00e9 priv\u00e9e chiffr\u00e9e (AES-256-GCM)', storageXpub: 'Cl\u00e9 publique \u00e9tendue du compte', storageFp: 'Empreinte BIP-32',
-    storageNet: 'Param\u00e8tre r\u00e9seau (main/test)', storageLang: 'Langue de l\u2019interface', storageSeedLang: 'Langue de la phrase',
+    storageNet: 'Param\u00e8tre r\u00e9seau (main/test)', storageLang: 'Langue de l\u2019interface', storageSeedLang: 'Langue de la phrase', storageKeyCreated: 'Date de cr\u00e9ation de la cl\u00e9', storageLastOnline: 'Date de d\u00e9tection r\u00e9seau',
     guideTitle: 'Guide d\u2019installation', guideDesc: 'Installez BitClutch Signer comme app hors ligne, puis activez le mode avion avant utilisation.',
     detected: 'D\u00e9tect\u00e9',
     guideIosSafari: '<strong>Installer comme app hors ligne :</strong><ol><li>Ouvrez cette page dans <strong>Safari</strong></li><li>Appuyez sur le bouton <strong>Share</strong> (carr\u00e9 avec fl\u00e8che)</li><li>Faites d\u00e9filer vers le bas et appuyez sur <strong>\u00abAdd to Home Screen\u00bb</strong></li><li>Appuyez sur <strong>\u00abAdd\u00bb</strong> en haut \u00e0 droite</li></ol><strong>Activer le mode avion :</strong><ol><li>Balayez vers le bas depuis le coin sup\u00e9rieur droit (\u00e0 partir du bas sur les anciens iPhone)</li><li>Appuyez sur l\u2019<strong>ic\u00f4ne d\u2019avion</strong> pour activer</li><li>V\u00e9rifiez que Wi-Fi et Bluetooth sont \u00e9galement d\u00e9sactiv\u00e9s</li></ol>',
@@ -834,7 +880,7 @@ const I18N = {
     setupDesc: '\u4f7f\u7528\u7269\u7406\u71b5\u751f\u6210\u65b0\u5bc6\u94a5\uff0c<br>\u6216\u5bfc\u5165\u73b0\u6709\u52a9\u8bb0\u8bcd\u3002',
     diceBtn: '\u9ab0\u5b50 (99\u6b21)', coinBtn: '\u786c\u5e01 (256\u6b21)', importBtn: '\u5bfc\u5165\u52a9\u8bb0\u8bcd',
     enterPassphrase: '\u8f93\u5165\u5bc6\u7801\u89e3\u9501', passphrase: '\u5bc6\u7801', unlock: '\u89e3\u9501', wrongPassphrase: '\u5bc6\u7801\u9519\u8bef\u3002',
-    yourKey: '\u4f60\u7684\u5bc6\u94a5', network: '\u7f51\u7edc', fingerprint: '\u6307\u7eb9', accountXpub: '\u8d26\u6237xpub',
+    yourKey: '\u4f60\u7684\u5bc6\u94a5', network: '\u7f51\u7edc', fingerprint: '\u6307\u7eb9', keyCreated: '\u521b\u5efa\u65e5\u671f', lastOnline: '\u6700\u540e\u5728\u7ebf', neverOnline: '\u65e0 (\u5b89\u5168)', onlineAfterKey: '\u5bc6\u94a5\u521b\u5efa\u540e\u68c0\u6d4b\u5230\u5728\u7ebf', accountXpub: '\u8d26\u6237xpub',
     showXpubQR: '\u663e\u793axpub\u4e8c\u7ef4\u7801', lockBtn: '\u9501\u5b9a', mainnet: '\u4e3b\u7f51', testnet: '\u6d4b\u8bd5\u7f51',
     diceTitle: '\u9ab0\u5b50\u5bc6\u94a5\u751f\u6210', diceDesc: '\u63b7\u771f\u5b9e\u9ab0\u5b50\u5e76\u70b9\u51fb\u7ed3\u679c\u3002',
     progress: '\u8fdb\u5ea6', undoLast: '\u64a4\u9500', cancel: '\u53d6\u6d88', ok: '\u786e\u5b9a',
@@ -889,7 +935,7 @@ const I18N = {
     warning: '\u8b66\u544a\uff1a', clearDataWarning: '\u6e05\u9664\u6d4f\u89c8\u5668\u6570\u636e\u5c06\u6c38\u4e45\u5220\u9664\u52a0\u5bc6\u5bc6\u94a5\u3002\u8bf7\u59cb\u7ec8\u79bb\u7ebf\u5907\u4efd\u52a9\u8bb0\u8bcd\u3002',
     autoLock: '\u81ea\u52a8\u9501\u5b9a\uff1a', autoLockDesc: '5\u5206\u949f\u65e0\u64cd\u4f5c\u540e\u5bc6\u94a5\u5c06\u4ece\u5185\u5b58\u4e2d\u6e05\u9664\u3002',
     storageEncKey: '\u52a0\u5bc6\u79c1\u94a5 (AES-256-GCM)', storageXpub: '\u8d26\u6237\u6269\u5c55\u516c\u94a5', storageFp: 'BIP-32\u6307\u7eb9',
-    storageNet: '\u7f51\u7edc\u8bbe\u7f6e (main/test)', storageLang: '\u754c\u9762\u8bed\u8a00', storageSeedLang: '\u52a9\u8bb0\u8bcd\u8bed\u8a00',
+    storageNet: '\u7f51\u7edc\u8bbe\u7f6e (main/test)', storageLang: '\u754c\u9762\u8bed\u8a00', storageSeedLang: '\u52a9\u8bb0\u8bcd\u8bed\u8a00', storageKeyCreated: '\u5bc6\u94a5\u521b\u5efa\u65e5\u671f', storageLastOnline: '\u7f51\u7edc\u68c0\u6d4b\u65e5\u671f',
     guideTitle: '\u5b89\u88c5\u6307\u5357', guideDesc: '\u5c06BitClutch Signer\u5b89\u88c5\u4e3a\u79bb\u7ebf\u5e94\u7528\uff0c\u7136\u540e\u5728\u4f7f\u7528\u524d\u5f00\u542f\u98de\u884c\u6a21\u5f0f\u3002',
     detected: '\u5df2\u68c0\u6d4b',
     guideIosSafari: '<strong>\u5b89\u88c5\u4e3a\u79bb\u7ebf\u5e94\u7528\uff1a</strong><ol><li>\u5728 <strong>Safari</strong> \u4e2d\u6253\u5f00\u6b64\u9875\u9762</li><li>\u70b9\u51fb <strong>Share</strong> \u6309\u94ae\uff08\u5e26\u7bad\u5934\u7684\u65b9\u6846\uff09</li><li>\u5411\u4e0b\u6eda\u52a8\u5e76\u70b9\u51fb <strong>\u201cAdd to Home Screen\u201d</strong></li><li>\u70b9\u51fb\u53f3\u4e0a\u89d2\u7684 <strong>\u201cAdd\u201d</strong></li></ol><strong>\u542f\u7528\u98de\u884c\u6a21\u5f0f\uff1a</strong><ol><li>\u4ece\u53f3\u4e0a\u89d2\u5411\u4e0b\u6ed1\u52a8\uff08\u65e7\u6b3eiPhone\u4ece\u5e95\u90e8\u5411\u4e0a\u6ed1\u52a8\uff09</li><li>\u70b9\u51fb<strong>\u98de\u884c\u6a21\u5f0f\u56fe\u6807</strong>\u4ee5\u542f\u7528</li><li>\u786e\u4fddWi-Fi\u548cBluetooth\u4e5f\u5df2\u5173\u95ed</li></ol>',
@@ -912,7 +958,7 @@ const I18N = {
     setupDesc: '\u4f7f\u7528\u7269\u7406\u71b5\u7522\u751f\u65b0\u5bc6\u9470\uff0c<br>\u6216\u532f\u5165\u73fe\u6709\u52a9\u8a18\u8a5e\u3002',
     diceBtn: '\u9ab0\u5b50 (99\u6b21)', coinBtn: '\u786c\u5e63 (256\u6b21)', importBtn: '\u532f\u5165\u52a9\u8a18\u8a5e',
     enterPassphrase: '\u8f38\u5165\u5bc6\u78bc\u89e3\u9396', passphrase: '\u5bc6\u78bc', unlock: '\u89e3\u9396', wrongPassphrase: '\u5bc6\u78bc\u932f\u8aa4\u3002',
-    yourKey: '\u4f60\u7684\u5bc6\u9470', network: '\u7db2\u8def', fingerprint: '\u6307\u7d0b', accountXpub: '\u5e33\u6236xpub',
+    yourKey: '\u4f60\u7684\u5bc6\u9470', network: '\u7db2\u8def', fingerprint: '\u6307\u7d0b', keyCreated: '\u5efa\u7acb\u65e5\u671f', lastOnline: '\u6700\u5f8c\u5728\u7dda', neverOnline: '\u7121 (\u5b89\u5168)', onlineAfterKey: '\u5bc6\u9470\u5efa\u7acb\u5f8c\u5075\u6e2c\u5230\u5728\u7dda', accountXpub: '\u5e33\u6236xpub',
     showXpubQR: '\u986f\u793axpub QR', lockBtn: '\u9396\u5b9a', mainnet: '\u4e3b\u7db2', testnet: '\u6e2c\u8a66\u7db2',
     diceTitle: '\u9ab0\u5b50\u5bc6\u9470\u7522\u751f', diceDesc: '\u64f2\u771f\u5be6\u9ab0\u5b50\u4e26\u9ede\u64ca\u7d50\u679c\u3002',
     progress: '\u9032\u5ea6', undoLast: '\u5fa9\u539f', cancel: '\u53d6\u6d88', ok: '\u78ba\u5b9a',
@@ -967,7 +1013,7 @@ const I18N = {
     warning: '\u8b66\u544a\uff1a', clearDataWarning: '\u6e05\u9664\u700f\u89bd\u5668\u8cc7\u6599\u5c07\u6c38\u4e45\u522a\u9664\u52a0\u5bc6\u5bc6\u9470\u3002\u8acb\u59cb\u7d42\u96e2\u7dda\u5099\u4efd\u52a9\u8a18\u8a5e\u3002',
     autoLock: '\u81ea\u52d5\u9396\u5b9a\uff1a', autoLockDesc: '5\u5206\u9418\u7121\u64cd\u4f5c\u5f8c\u5bc6\u9470\u5c07\u5f9e\u8a18\u61b6\u9ad4\u4e2d\u6e05\u9664\u3002',
     storageEncKey: '\u52a0\u5bc6\u79c1\u9470 (AES-256-GCM)', storageXpub: '\u5e33\u6236\u64f4\u5c55\u516c\u9470', storageFp: 'BIP-32\u6307\u7d0b',
-    storageNet: '\u7db2\u8def\u8a2d\u5b9a (main/test)', storageLang: '\u4ecb\u9762\u8a9e\u8a00', storageSeedLang: '\u52a9\u8a18\u8a5e\u8a9e\u8a00',
+    storageNet: '\u7db2\u8def\u8a2d\u5b9a (main/test)', storageLang: '\u4ecb\u9762\u8a9e\u8a00', storageSeedLang: '\u52a9\u8a18\u8a5e\u8a9e\u8a00', storageKeyCreated: '\u5bc6\u9470\u5efa\u7acb\u65e5\u671f', storageLastOnline: '\u7db2\u8def\u5075\u6e2c\u65e5\u671f',
     guideTitle: '\u5b89\u88dd\u6307\u5357', guideDesc: '\u5c07BitClutch Signer\u5b89\u88dd\u70ba\u96e2\u7dda\u61c9\u7528\uff0c\u7136\u5f8c\u5728\u4f7f\u7528\u524d\u958b\u555f\u98db\u884c\u6a21\u5f0f\u3002',
     detected: '\u5df2\u5075\u6e2c',
     guideIosSafari: '<strong>\u5b89\u88dd\u70ba\u96e2\u7dda\u61c9\u7528\uff1a</strong><ol><li>\u5728 <strong>Safari</strong> \u4e2d\u958b\u555f\u6b64\u9801\u9762</li><li>\u9ede\u64ca <strong>Share</strong> \u6309\u9215\uff08\u5e36\u7bad\u982d\u7684\u65b9\u6846\uff09</li><li>\u5411\u4e0b\u6eff\u52d5\u4e26\u9ede\u64ca <strong>\u201cAdd to Home Screen\u201d</strong></li><li>\u9ede\u64ca\u53f3\u4e0a\u89d2\u7684 <strong>\u201cAdd\u201d</strong></li></ol><strong>\u555f\u7528\u98db\u884c\u6a21\u5f0f\uff1a</strong><ol><li>\u5f9e\u53f3\u4e0a\u89d2\u5411\u4e0b\u6ed1\u52d5\uff08\u820a\u6b3eiPhone\u5f9e\u5e95\u90e8\u5411\u4e0a\u6ed1\u52d5\uff09</li><li>\u9ede\u64ca<strong>\u98db\u884c\u6a21\u5f0f\u5716\u793a</strong>\u4ee5\u555f\u7528</li><li>\u78ba\u4fddWi-Fi\u548cBluetooth\u4e5f\u5df2\u95dc\u9589</li></ol>',
@@ -986,11 +1032,11 @@ const I18N = {
   tr: {
     unlocked: 'Kilit a\u00e7\u0131k', locked: 'Kilitli',
     tabKey: 'Anahtar', tabSign: '\u0130mzala', tabSettings: 'Ayarlar',
-    createKeys: 'Anahtarlar\u0131n\u0131 olu\u015ftur',
+    createKeys: 'Anahtar\u0131n\u0131 olu\u015ftur',
     setupDesc: 'Fiziksel entropi ile yeni bir anahtar olu\u015fturun,<br>veya mevcut bir tohum ifadesi i\u00e7e aktar\u0131n.',
     diceBtn: 'Zar (99 at\u0131\u015f)', coinBtn: 'Yaz\u0131-Tura (256 at\u0131\u015f)', importBtn: 'Tohum ifadesi i\u00e7e aktar',
     enterPassphrase: 'Kilidi a\u00e7mak i\u00e7in parola girin', passphrase: 'Parola', unlock: 'Kilidi a\u00e7', wrongPassphrase: 'Yanl\u0131\u015f parola.',
-    yourKey: 'Anahtar\u0131n\u0131z', network: 'A\u011f', fingerprint: 'Parmak izi', accountXpub: 'Hesap xpub',
+    yourKey: 'Anahtar\u0131n\u0131z', network: 'A\u011f', fingerprint: 'Parmak izi', keyCreated: 'Olu\u015fturulma', lastOnline: 'Son \u00e7evrim.', neverOnline: 'Hi\u00e7 (g\u00fcvenli)', onlineAfterKey: 'Olu\u015fturmadan sonra \u00e7evrimi\u00e7i tespit', accountXpub: 'Hesap xpub',
     showXpubQR: 'xpub QR g\u00f6ster', lockBtn: 'Kilitle', mainnet: 'Ana a\u011f', testnet: 'Test a\u011f\u0131',
     diceTitle: 'Zar ile anahtar \u00fcretimi', diceDesc: 'Ger\u00e7ek bir zar at\u0131n ve sonuca dokunun.',
     progress: '\u0130lerleme', undoLast: 'Geri al', cancel: '\u0130ptal', ok: 'Tamam',
@@ -1045,7 +1091,7 @@ const I18N = {
     warning: 'Uyar\u0131:', clearDataWarning: 'Taray\u0131c\u0131 verilerini temizlemek \u015fifreli anahtar\u0131n\u0131z\u0131 kal\u0131c\u0131 olarak siler. Tohum ifadenizi her zaman \u00e7evrimd\u0131\u015f\u0131 yedekleyin.',
     autoLock: 'Otomatik kilit:', autoLockDesc: '5 dakika hareketsizlik sonras\u0131 anahtarlar bellekten silinir.',
     storageEncKey: '\u015eifreli \u00f6zel anahtar (AES-256-GCM)', storageXpub: 'Hesap geni\u015fletilmi\u015f genel anahtar', storageFp: 'BIP-32 parmak izi',
-    storageNet: 'A\u011f ayar\u0131 (main/test)', storageLang: 'Aray\u00fcz dili', storageSeedLang: 'Tohum ifadesi dili',
+    storageNet: 'A\u011f ayar\u0131 (main/test)', storageLang: 'Aray\u00fcz dili', storageSeedLang: 'Tohum ifadesi dili', storageKeyCreated: 'Anahtar olu\u015fturma tarihi', storageLastOnline: 'A\u011f alg\u0131lama tarihi',
     guideTitle: 'Kurulum k\u0131lavuzu', guideDesc: 'BitClutch Signer\u2019\u0131 \u00e7evrimd\u0131\u015f\u0131 uygulama olarak kurun, kullanmadan \u00f6nce u\u00e7ak modunu etkinle\u015ftirin.',
     detected: 'Alg\u0131land\u0131',
     guideIosSafari: '<strong>\u00c7evrimd\u0131\u015f\u0131 uygulama olarak kurun:</strong><ol><li>Bu sayfay\u0131 <strong>Safari</strong> ile a\u00e7\u0131n</li><li><strong>Share</strong> d\u00fc\u011fmesine dokunun (oklu kutu)</li><li>A\u015fa\u011f\u0131 kayd\u0131r\u0131p <strong>\u201cAdd to Home Screen\u201d</strong> se\u00e7ene\u011fine dokunun</li><li>Sa\u011f \u00fcstteki <strong>\u201cAdd\u201d</strong> d\u00fc\u011fmesine dokunun</li></ol><strong>U\u00e7ak Modunu Etkinle\u015ftirin:</strong><ol><li>Sa\u011f \u00fcst k\u00f6\u015feden a\u015fa\u011f\u0131 kayd\u0131r\u0131n (eski iPhone\'larda alttan yukar\u0131)</li><li>Etkinle\u015ftirmek i\u00e7in <strong>u\u00e7ak simgesine</strong> dokunun</li><li>Wi-Fi ve Bluetooth\'un da KAPALI oldu\u011fundan emin olun</li></ol>',
@@ -1064,11 +1110,11 @@ const I18N = {
   it: {
     unlocked: 'Sbloccato', locked: 'Bloccato',
     tabKey: 'Chiave', tabSign: 'Firma', tabSettings: 'Impostazioni',
-    createKeys: 'Crea le tue chiavi',
+    createKeys: 'Crea la tua chiave',
     setupDesc: 'Genera una nuova chiave con entropia fisica,<br>o importa una frase seme esistente.',
     diceBtn: 'Dado (99 lanci)', coinBtn: 'Moneta (256 lanci)', importBtn: 'Importa frase seme',
     enterPassphrase: 'Inserisci la password per sbloccare', passphrase: 'Password', unlock: 'Sblocca', wrongPassphrase: 'Password errata.',
-    yourKey: 'La tua chiave', network: 'Rete', fingerprint: 'Impronta', accountXpub: 'xpub account',
+    yourKey: 'La tua chiave', network: 'Rete', fingerprint: 'Impronta', keyCreated: 'Creata il', lastOnline: 'Ult. online', neverOnline: 'Mai (sicuro)', onlineAfterKey: 'Online rilevato dopo creazione', accountXpub: 'xpub account',
     showXpubQR: 'Mostra QR xpub', lockBtn: 'Blocca', mainnet: 'Mainnet', testnet: 'Testnet',
     diceTitle: 'Generazione con dado', diceDesc: 'Lancia un dado fisico reale e tocca il risultato.',
     progress: 'Progresso', undoLast: 'Annulla', cancel: 'Annulla', ok: 'OK',
@@ -1123,7 +1169,7 @@ const I18N = {
     warning: 'Attenzione:', clearDataWarning: 'Cancellare i dati del browser eliminer\u00e0 permanentemente la chiave cifrata. Conserva sempre la frase seme offline.',
     autoLock: 'Blocco automatico:', autoLockDesc: 'Le chiavi vengono cancellate dalla memoria dopo 5 minuti di inattivit\u00e0.',
     storageEncKey: 'Chiave privata cifrata (AES-256-GCM)', storageXpub: 'Chiave pubblica estesa account', storageFp: 'Impronta BIP-32',
-    storageNet: 'Impostazione rete (main/test)', storageLang: 'Lingua interfaccia', storageSeedLang: 'Lingua frase seme',
+    storageNet: 'Impostazione rete (main/test)', storageLang: 'Lingua interfaccia', storageSeedLang: 'Lingua frase seme', storageKeyCreated: 'Data creazione chiave', storageLastOnline: 'Data rilevamento rete',
     guideTitle: 'Guida installazione', guideDesc: 'Installa BitClutch Signer come app offline, poi attiva la modalit\u00e0 aereo prima dell\u2019uso.',
     detected: 'Rilevato',
     guideIosSafari: '<strong>Installa come app offline:</strong><ol><li>Apri questa pagina in <strong>Safari</strong></li><li>Tocca il pulsante <strong>Share</strong> (riquadro con freccia)</li><li>Scorri verso il basso e tocca <strong>\u201cAdd to Home Screen\u201d</strong></li><li>Tocca <strong>\u201cAdd\u201d</strong> in alto a destra</li></ol><strong>Attiva la Modalit\u00e0 Aereo:</strong><ol><li>Scorri verso il basso dall\'angolo in alto a destra (o verso l\'alto dal basso sui vecchi iPhone)</li><li>Tocca l\'<strong>icona dell\'aereo</strong> per attivare</li><li>Assicurati che Wi-Fi e Bluetooth siano anch\'essi SPENTI</li></ol>',
@@ -1146,7 +1192,7 @@ const I18N = {
     setupDesc: 'T\u1ea1o kh\u00f3a m\u1edbi b\u1eb1ng entropy v\u1eadt l\u00fd,<br>ho\u1eb7c nh\u1eadp c\u1ee5m t\u1eeb kh\u00f4i ph\u1ee5c hi\u1ec7n c\u00f3.',
     diceBtn: 'X\u00fac x\u1eafc (99 l\u1ea7n)', coinBtn: 'T\u1ea1ng \u0111\u1ed3ng xu (256 l\u1ea7n)', importBtn: 'Nh\u1eadp c\u1ee5m t\u1eeb kh\u00f4i ph\u1ee5c',
     enterPassphrase: 'Nh\u1eadp m\u1eadt kh\u1ea9u \u0111\u1ec3 m\u1edf kh\u00f3a', passphrase: 'M\u1eadt kh\u1ea9u', unlock: 'M\u1edf kh\u00f3a', wrongPassphrase: 'Sai m\u1eadt kh\u1ea9u.',
-    yourKey: 'Kh\u00f3a c\u1ee7a b\u1ea1n', network: 'M\u1ea1ng', fingerprint: 'V\u00e2n tay', accountXpub: 'xpub t\u00e0i kho\u1ea3n',
+    yourKey: 'Kh\u00f3a c\u1ee7a b\u1ea1n', network: 'M\u1ea1ng', fingerprint: 'V\u00e2n tay', keyCreated: 'Ng\u00e0y t\u1ea1o', lastOnline: 'L\u1ea7n cu\u1ed1i', neverOnline: 'Ch\u01b0a (an to\u00e0n)', onlineAfterKey: 'Ph\u00e1t hi\u1ec7n tr\u1ef1c tuy\u1ebfn sau t\u1ea1o kh\u00f3a', accountXpub: 'xpub t\u00e0i kho\u1ea3n',
     showXpubQR: 'Hi\u1ec3n QR xpub', lockBtn: 'Kh\u00f3a', mainnet: 'Mainnet', testnet: 'Testnet',
     diceTitle: 'T\u1ea1o kh\u00f3a b\u1eb1ng x\u00fac x\u1eafc', diceDesc: 'Tung x\u00fac x\u1eafc th\u1eadt v\u00e0 ch\u1ea1m k\u1ebft qu\u1ea3.',
     progress: 'Ti\u1ebfn \u0111\u1ed9', undoLast: 'Ho\u00e0n t\u00e1c', cancel: 'H\u1ee7y', ok: 'OK',
@@ -1201,7 +1247,7 @@ const I18N = {
     warning: 'C\u1ea3nh b\u00e1o:', clearDataWarning: 'X\u00f3a d\u1eef li\u1ec7u tr\u00ecnh duy\u1ec7t s\u1ebd x\u00f3a v\u0129nh vi\u1ec5n kh\u00f3a m\u00e3 h\u00f3a. Lu\u00f4n sao l\u01b0u c\u1ee5m t\u1eeb ngo\u1ea1i tuy\u1ebfn.',
     autoLock: 'T\u1ef1 \u0111\u1ed9ng kh\u00f3a:', autoLockDesc: 'Kh\u00f3a b\u1ecb x\u00f3a kh\u1ecfi b\u1ed9 nh\u1edb sau 5 ph\u00fat kh\u00f4ng ho\u1ea1t \u0111\u1ed9ng.',
     storageEncKey: 'Kh\u00f3a ri\u00eang m\u00e3 h\u00f3a (AES-256-GCM)', storageXpub: 'Kh\u00f3a c\u00f4ng m\u1edf r\u1ed9ng t\u00e0i kho\u1ea3n', storageFp: 'V\u00e2n tay BIP-32',
-    storageNet: 'C\u00e0i \u0111\u1eb7t m\u1ea1ng (main/test)', storageLang: 'Ng\u00f4n ng\u1eef giao di\u1ec7n', storageSeedLang: 'Ng\u00f4n ng\u1eef c\u1ee5m t\u1eeb',
+    storageNet: 'C\u00e0i \u0111\u1eb7t m\u1ea1ng (main/test)', storageLang: 'Ng\u00f4n ng\u1eef giao di\u1ec7n', storageSeedLang: 'Ng\u00f4n ng\u1eef c\u1ee5m t\u1eeb', storageKeyCreated: 'Ng\u00e0y t\u1ea1o kh\u00f3a', storageLastOnline: 'Ng\u00e0y ph\u00e1t hi\u1ec7n m\u1ea1ng',
     guideTitle: 'H\u01b0\u1edbng d\u1eabn c\u00e0i \u0111\u1eb7t', guideDesc: 'C\u00e0i \u0111\u1eb7t BitClutch Signer nh\u01b0 \u1ee9ng d\u1ee5ng ngo\u1ea1i tuy\u1ebfn, sau \u0111\u00f3 b\u1eadt ch\u1ebf \u0111\u1ed9 m\u00e1y bay tr\u01b0\u1edbc khi s\u1eed d\u1ee5ng.',
     detected: '\u0110\u00e3 ph\u00e1t hi\u1ec7n',
     guideIosSafari: '<strong>C\u00e0i \u0111\u1eb7t nh\u01b0 \u1ee9ng d\u1ee5ng ngo\u1ea1i tuy\u1ebfn:</strong><ol><li>M\u1edf trang n\u00e0y trong <strong>Safari</strong></li><li>Nh\u1ea5n n\u00fat <strong>Share</strong> (h\u1ed9p c\u00f3 m\u0169i t\u00ean)</li><li>Cu\u1ed9n xu\u1ed1ng v\u00e0 nh\u1ea5n <strong>\u201cAdd to Home Screen\u201d</strong></li><li>Nh\u1ea5n <strong>\u201cAdd\u201d</strong> \u1edf g\u00f3c tr\u00ean b\u00ean ph\u1ea3i</li></ol><strong>B\u1eadt Ch\u1ebf \u0111\u1ed9 M\u00e1y bay:</strong><ol><li>Vu\u1ed1t xu\u1ed1ng t\u1eeb g\u00f3c tr\u00ean b\u00ean ph\u1ea3i (ho\u1eb7c vu\u1ed1t l\u00ean t\u1eeb d\u01b0\u1edbi tr\u00ean iPhone c\u0169)</li><li>Nh\u1ea5n <strong>bi\u1ec3u t\u01b0\u1ee3ng m\u00e1y bay</strong> \u0111\u1ec3 b\u1eadt</li><li>\u0110\u1ea3m b\u1ea3o Wi-Fi v\u00e0 Bluetooth c\u0169ng \u0111\u00e3 T\u1eaeT</li></ol>',
@@ -1224,7 +1270,7 @@ const I18N = {
     setupDesc: '\u0e2a\u0e23\u0e49\u0e32\u0e07\u0e04\u0e35\u0e22\u0e4c\u0e43\u0e2b\u0e21\u0e48\u0e14\u0e49\u0e27\u0e22\u0e40\u0e2d\u0e19\u0e42\u0e17\u0e23\u0e1b\u0e35\u0e17\u0e32\u0e07\u0e01\u0e32\u0e22\u0e20\u0e32\u0e1e,<br>\u0e2b\u0e23\u0e37\u0e2d\u0e19\u0e33\u0e40\u0e02\u0e49\u0e32\u0e0a\u0e38\u0e14\u0e04\u0e33\u0e01\u0e39\u0e49\u0e04\u0e37\u0e19\u0e17\u0e35\u0e48\u0e21\u0e35\u0e2d\u0e22\u0e39\u0e48',
     diceBtn: '\u0e25\u0e39\u0e01\u0e40\u0e15\u0e4b\u0e32 (99 \u0e04\u0e23\u0e31\u0e49\u0e07)', coinBtn: '\u0e42\u0e22\u0e19\u0e40\u0e2b\u0e23\u0e35\u0e22\u0e0d (256 \u0e04\u0e23\u0e31\u0e49\u0e07)', importBtn: '\u0e19\u0e33\u0e40\u0e02\u0e49\u0e32\u0e0a\u0e38\u0e14\u0e04\u0e33\u0e01\u0e39\u0e49\u0e04\u0e37\u0e19',
     enterPassphrase: '\u0e1b\u0e49\u0e2d\u0e19\u0e23\u0e2b\u0e31\u0e2a\u0e1c\u0e48\u0e32\u0e19\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e1b\u0e25\u0e14\u0e25\u0e47\u0e2d\u0e01', passphrase: '\u0e23\u0e2b\u0e31\u0e2a\u0e1c\u0e48\u0e32\u0e19', unlock: '\u0e1b\u0e25\u0e14\u0e25\u0e47\u0e2d\u0e01', wrongPassphrase: '\u0e23\u0e2b\u0e31\u0e2a\u0e1c\u0e48\u0e32\u0e19\u0e44\u0e21\u0e48\u0e16\u0e39\u0e01\u0e15\u0e49\u0e2d\u0e07',
-    yourKey: '\u0e04\u0e35\u0e22\u0e4c\u0e02\u0e2d\u0e07\u0e04\u0e38\u0e13', network: '\u0e40\u0e04\u0e23\u0e37\u0e2d\u0e02\u0e48\u0e32\u0e22', fingerprint: '\u0e25\u0e32\u0e22\u0e19\u0e34\u0e49\u0e27\u0e21\u0e37\u0e2d', accountXpub: 'xpub \u0e1a\u0e31\u0e0d\u0e0a\u0e35',
+    yourKey: '\u0e04\u0e35\u0e22\u0e4c\u0e02\u0e2d\u0e07\u0e04\u0e38\u0e13', network: '\u0e40\u0e04\u0e23\u0e37\u0e2d\u0e02\u0e48\u0e32\u0e22', fingerprint: '\u0e25\u0e32\u0e22\u0e19\u0e34\u0e49\u0e27\u0e21\u0e37\u0e2d', keyCreated: '\u0e2a\u0e23\u0e49\u0e32\u0e07\u0e40\u0e21\u0e37\u0e48\u0e2d', lastOnline: '\u0e2d\u0e2d\u0e19\u0e44\u0e25\u0e19\u0e4c\u0e25\u0e48\u0e32\u0e2a\u0e38\u0e14', neverOnline: '\u0e44\u0e21\u0e48\u0e40\u0e04\u0e22 (\u0e1b\u0e25\u0e2d\u0e14\u0e20\u0e31\u0e22)', onlineAfterKey: '\u0e15\u0e23\u0e27\u0e08\u0e1e\u0e1a\u0e2d\u0e2d\u0e19\u0e44\u0e25\u0e19\u0e4c\u0e2b\u0e25\u0e31\u0e07\u0e2a\u0e23\u0e49\u0e32\u0e07\u0e04\u0e35\u0e22\u0e4c', accountXpub: 'xpub \u0e1a\u0e31\u0e0d\u0e0a\u0e35',
     showXpubQR: '\u0e41\u0e2a\u0e14\u0e07 QR xpub', lockBtn: '\u0e25\u0e47\u0e2d\u0e01', mainnet: 'Mainnet', testnet: 'Testnet',
     diceTitle: '\u0e2a\u0e23\u0e49\u0e32\u0e07\u0e04\u0e35\u0e22\u0e4c\u0e14\u0e49\u0e27\u0e22\u0e25\u0e39\u0e01\u0e40\u0e15\u0e4b\u0e32', diceDesc: '\u0e17\u0e2d\u0e22\u0e25\u0e39\u0e01\u0e40\u0e15\u0e4b\u0e32\u0e08\u0e23\u0e34\u0e07\u0e41\u0e25\u0e49\u0e27\u0e41\u0e15\u0e30\u0e1c\u0e25\u0e25\u0e31\u0e1e\u0e18\u0e4c',
     progress: '\u0e04\u0e27\u0e32\u0e21\u0e04\u0e37\u0e1a\u0e2b\u0e19\u0e49\u0e32', undoLast: '\u0e22\u0e49\u0e2d\u0e19\u0e01\u0e25\u0e31\u0e1a', cancel: '\u0e22\u0e01\u0e40\u0e25\u0e34\u0e01', ok: '\u0e15\u0e01\u0e25\u0e07',
@@ -1279,7 +1325,7 @@ const I18N = {
     warning: '\u0e04\u0e33\u0e40\u0e15\u0e37\u0e2d\u0e19:', clearDataWarning: '\u0e01\u0e32\u0e23\u0e25\u0e49\u0e32\u0e07\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e40\u0e1a\u0e23\u0e32\u0e27\u0e40\u0e0b\u0e2d\u0e23\u0e4c\u0e08\u0e30\u0e25\u0e1a\u0e04\u0e35\u0e22\u0e4c\u0e17\u0e35\u0e48\u0e40\u0e02\u0e49\u0e32\u0e23\u0e2b\u0e31\u0e2a\u0e16\u0e32\u0e27\u0e23 \u0e2a\u0e33\u0e23\u0e2d\u0e07\u0e0a\u0e38\u0e14\u0e04\u0e33\u0e2d\u0e2d\u0e1f\u0e44\u0e25\u0e19\u0e4c\u0e40\u0e2a\u0e21\u0e2d',
     autoLock: '\u0e25\u0e47\u0e2d\u0e01\u0e2d\u0e31\u0e15\u0e42\u0e19\u0e21\u0e31\u0e15\u0e34:', autoLockDesc: '\u0e04\u0e35\u0e22\u0e4c\u0e08\u0e30\u0e16\u0e39\u0e01\u0e25\u0e1a\u0e08\u0e32\u0e01\u0e2b\u0e19\u0e48\u0e27\u0e22\u0e04\u0e27\u0e32\u0e21\u0e08\u0e33\u0e2b\u0e25\u0e31\u0e07 5 \u0e19\u0e32\u0e17\u0e35\u0e44\u0e21\u0e48\u0e21\u0e35\u0e01\u0e32\u0e23\u0e43\u0e0a\u0e49\u0e07\u0e32\u0e19',
     storageEncKey: '\u0e04\u0e35\u0e22\u0e4c\u0e2a\u0e48\u0e27\u0e19\u0e15\u0e31\u0e27\u0e17\u0e35\u0e48\u0e40\u0e02\u0e49\u0e32\u0e23\u0e2b\u0e31\u0e2a (AES-256-GCM)', storageXpub: '\u0e04\u0e35\u0e22\u0e4c\u0e2a\u0e32\u0e18\u0e32\u0e23\u0e13\u0e30\u0e02\u0e22\u0e32\u0e22\u0e02\u0e2d\u0e07\u0e1a\u0e31\u0e0d\u0e0a\u0e35', storageFp: '\u0e25\u0e32\u0e22\u0e19\u0e34\u0e49\u0e27\u0e21\u0e37\u0e2d BIP-32',
-    storageNet: '\u0e01\u0e32\u0e23\u0e15\u0e31\u0e49\u0e07\u0e04\u0e48\u0e32\u0e40\u0e04\u0e23\u0e37\u0e2d\u0e02\u0e48\u0e32\u0e22 (main/test)', storageLang: '\u0e20\u0e32\u0e29\u0e32\u0e2d\u0e34\u0e19\u0e40\u0e17\u0e2d\u0e23\u0e4c\u0e40\u0e1f\u0e0b', storageSeedLang: '\u0e20\u0e32\u0e29\u0e32\u0e0a\u0e38\u0e14\u0e04\u0e33',
+    storageNet: '\u0e01\u0e32\u0e23\u0e15\u0e31\u0e49\u0e07\u0e04\u0e48\u0e32\u0e40\u0e04\u0e23\u0e37\u0e2d\u0e02\u0e48\u0e32\u0e22 (main/test)', storageLang: '\u0e20\u0e32\u0e29\u0e32\u0e2d\u0e34\u0e19\u0e40\u0e17\u0e2d\u0e23\u0e4c\u0e40\u0e1f\u0e0b', storageSeedLang: '\u0e20\u0e32\u0e29\u0e32\u0e0a\u0e38\u0e14\u0e04\u0e33', storageKeyCreated: '\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e2a\u0e23\u0e49\u0e32\u0e07\u0e04\u0e35\u0e22\u0e4c', storageLastOnline: '\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e15\u0e23\u0e27\u0e08\u0e1e\u0e1a\u0e40\u0e04\u0e23\u0e37\u0e2d\u0e02\u0e48\u0e32\u0e22',
     guideTitle: '\u0e04\u0e39\u0e48\u0e21\u0e37\u0e2d\u0e01\u0e32\u0e23\u0e15\u0e34\u0e14\u0e15\u0e31\u0e49\u0e07', guideDesc: '\u0e15\u0e34\u0e14\u0e15\u0e31\u0e49\u0e07 BitClutch Signer \u0e40\u0e1b\u0e47\u0e19\u0e41\u0e2d\u0e1b\u0e2d\u0e2d\u0e1f\u0e44\u0e25\u0e19\u0e4c \u0e08\u0e32\u0e01\u0e19\u0e31\u0e49\u0e19\u0e40\u0e1b\u0e34\u0e14\u0e42\u0e2b\u0e21\u0e14\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e1a\u0e34\u0e19\u0e01\u0e48\u0e2d\u0e19\u0e43\u0e0a\u0e49\u0e07\u0e32\u0e19',
     detected: '\u0e15\u0e23\u0e27\u0e08\u0e1e\u0e1a', accountXpubTitle: 'xpub \u0e1a\u0e31\u0e0d\u0e0a\u0e35',
     guideIosSafari: '<strong>\u0e15\u0e34\u0e14\u0e15\u0e31\u0e49\u0e07\u0e40\u0e1b\u0e47\u0e19\u0e41\u0e2d\u0e1b\u0e2d\u0e2d\u0e1f\u0e44\u0e25\u0e19\u0e4c:</strong><ol><li>\u0e40\u0e1b\u0e34\u0e14\u0e2b\u0e19\u0e49\u0e32\u0e19\u0e35\u0e49\u0e43\u0e19 <strong>Safari</strong></li><li>\u0e41\u0e15\u0e30\u0e1b\u0e38\u0e48\u0e21 <strong>Share</strong> (\u0e01\u0e25\u0e48\u0e2d\u0e07\u0e21\u0e35\u0e25\u0e39\u0e01\u0e28\u0e23)</li><li>\u0e40\u0e25\u0e37\u0e48\u0e2d\u0e19\u0e25\u0e07\u0e41\u0e25\u0e49\u0e27\u0e41\u0e15\u0e30 <strong>"Add to Home Screen"</strong></li><li>\u0e41\u0e15\u0e30 <strong>"Add"</strong> \u0e17\u0e35\u0e48\u0e21\u0e38\u0e21\u0e02\u0e27\u0e32\u0e1a\u0e19</li></ol><strong>\u0e40\u0e1b\u0e34\u0e14\u0e43\u0e0a\u0e49\u0e42\u0e2b\u0e21\u0e14\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e1a\u0e34\u0e19:</strong><ol><li>\u0e1b\u0e31\u0e14\u0e25\u0e07\u0e08\u0e32\u0e01\u0e21\u0e38\u0e21\u0e02\u0e27\u0e32\u0e1a\u0e19 (\u0e2b\u0e23\u0e37\u0e2d\u0e1b\u0e31\u0e14\u0e02\u0e36\u0e49\u0e19\u0e08\u0e32\u0e01\u0e14\u0e49\u0e32\u0e19\u0e25\u0e48\u0e32\u0e07\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a iPhone \u0e23\u0e38\u0e48\u0e19\u0e40\u0e01\u0e48\u0e32)</li><li>\u0e41\u0e15\u0e30\u0e44\u0e2d\u0e04\u0e2d\u0e19 <strong>airplane icon</strong> \u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e40\u0e1b\u0e34\u0e14\u0e43\u0e0a\u0e49\u0e07\u0e32\u0e19</li><li>\u0e15\u0e23\u0e27\u0e08\u0e2a\u0e2d\u0e1a\u0e27\u0e48\u0e32 Wi-Fi \u0e41\u0e25\u0e30 Bluetooth \u0e1b\u0e34\u0e14\u0e2d\u0e22\u0e39\u0e48\u0e14\u0e49\u0e27\u0e22</li></ol>',
@@ -1301,7 +1347,7 @@ const I18N = {
     setupDesc: 'Buat kunci baru dengan entropi fisik,<br>atau impor frasa benih yang sudah ada.',
     diceBtn: 'Dadu (99 lemparan)', coinBtn: 'Koin (256 lemparan)', importBtn: 'Impor frasa benih',
     enterPassphrase: 'Masukkan kata sandi untuk membuka', passphrase: 'Kata sandi', unlock: 'Buka kunci', wrongPassphrase: 'Kata sandi salah.',
-    yourKey: 'Kunci Anda', network: 'Jaringan', fingerprint: 'Sidik jari', accountXpub: 'xpub akun',
+    yourKey: 'Kunci Anda', network: 'Jaringan', fingerprint: 'Sidik jari', keyCreated: 'Dibuat', lastOnline: 'Terakhir online', neverOnline: 'Belum pernah (aman)', onlineAfterKey: 'Online terdeteksi setelah pembuatan', accountXpub: 'xpub akun',
     showXpubQR: 'Tampilkan QR xpub', lockBtn: 'Kunci', mainnet: 'Mainnet', testnet: 'Testnet',
     diceTitle: 'Pembuatan kunci dadu', diceDesc: 'Lempar dadu fisik asli dan ketuk hasilnya.',
     progress: 'Kemajuan', undoLast: 'Batalkan', cancel: 'Batal', ok: 'OK',
@@ -1356,7 +1402,7 @@ const I18N = {
     warning: 'Peringatan:', clearDataWarning: 'Menghapus data browser akan menghapus kunci terenkripsi secara permanen. Selalu cadangkan frasa benih secara offline.',
     autoLock: 'Kunci otomatis:', autoLockDesc: 'Kunci dihapus dari memori setelah 5 menit tidak aktif.',
     storageEncKey: 'Kunci pribadi terenkripsi (AES-256-GCM)', storageXpub: 'Kunci publik diperluas akun', storageFp: 'Sidik jari BIP-32',
-    storageNet: 'Pengaturan jaringan (main/test)', storageLang: 'Bahasa antarmuka', storageSeedLang: 'Bahasa frasa benih',
+    storageNet: 'Pengaturan jaringan (main/test)', storageLang: 'Bahasa antarmuka', storageSeedLang: 'Bahasa frasa benih', storageKeyCreated: 'Tanggal pembuatan kunci', storageLastOnline: 'Tanggal deteksi jaringan',
     guideTitle: 'Panduan instalasi', guideDesc: 'Instal BitClutch Signer sebagai aplikasi offline, lalu aktifkan mode pesawat sebelum menggunakan.',
     detected: 'Terdeteksi', accountXpubTitle: 'xpub akun',
     guideIosSafari: '<strong>Instal sebagai aplikasi offline:</strong><ol><li>Buka halaman ini di <strong>Safari</strong></li><li>Ketuk tombol <strong>Share</strong> (kotak dengan panah)</li><li>Gulir ke bawah dan ketuk <strong>"Add to Home Screen"</strong></li><li>Ketuk <strong>"Add"</strong> di kanan atas</li></ol><strong>Aktifkan Mode Pesawat:</strong><ol><li>Geser ke bawah dari sudut kanan atas (atau ke atas dari bawah pada iPhone lama)</li><li>Ketuk ikon <strong>airplane icon</strong> untuk mengaktifkan</li><li>Pastikan Wi-Fi dan Bluetooth juga MATI</li></ol>',
@@ -1374,11 +1420,11 @@ const I18N = {
   ar: {
     unlocked: '\u063a\u064a\u0631 \u0645\u0642\u0641\u0644', locked: '\u0645\u0642\u0641\u0644',
     tabKey: '\u0645\u0641\u062a\u0627\u062d', tabSign: '\u062a\u0648\u0642\u064a\u0639', tabSettings: '\u0625\u0639\u062f\u0627\u062f\u0627\u062a',
-    createKeys: '\u0623\u0646\u0634\u0626 \u0645\u0641\u0627\u062a\u064a\u062d\u0643',
+    createKeys: '\u0623\u0646\u0634\u0626 \u0645\u0641\u062a\u0627\u062d\u0643',
     setupDesc: '\u0623\u0646\u0634\u0626 \u0645\u0641\u062a\u0627\u062d\u064b\u0627 \u062c\u062f\u064a\u062f\u064b\u0627 \u0628\u0627\u0633\u062a\u062e\u062f\u0627\u0645 \u0625\u0646\u062a\u0631\u0648\u0628\u064a\u0627 \u0641\u064a\u0632\u064a\u0627\u0626\u064a\u0629,<br>\u0623\u0648 \u0627\u0633\u062a\u0648\u0631\u062f \u0639\u0628\u0627\u0631\u0629 \u0628\u0630\u0631\u0629 \u0645\u0648\u062c\u0648\u062f\u0629.',
     diceBtn: '\u0646\u0631\u062f (99 \u0631\u0645\u064a\u0629)', coinBtn: '\u0639\u0645\u0644\u0629 (256 \u0631\u0645\u064a\u0629)', importBtn: '\u0627\u0633\u062a\u064a\u0631\u0627\u062f \u0639\u0628\u0627\u0631\u0629 \u0627\u0644\u0628\u0630\u0631\u0629',
     enterPassphrase: '\u0623\u062f\u062e\u0644 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u0644\u0641\u062a\u062d \u0627\u0644\u0642\u0641\u0644', passphrase: '\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631', unlock: '\u0641\u062a\u062d', wrongPassphrase: '\u0643\u0644\u0645\u0629 \u0645\u0631\u0648\u0631 \u062e\u0627\u0637\u0626\u0629.',
-    yourKey: '\u0645\u0641\u062a\u0627\u062d\u0643', network: '\u0627\u0644\u0634\u0628\u0643\u0629', fingerprint: '\u0627\u0644\u0628\u0635\u0645\u0629', accountXpub: 'xpub \u0627\u0644\u062d\u0633\u0627\u0628',
+    yourKey: '\u0645\u0641\u062a\u0627\u062d\u0643', network: '\u0627\u0644\u0634\u0628\u0643\u0629', fingerprint: '\u0627\u0644\u0628\u0635\u0645\u0629', keyCreated: '\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0625\u0646\u0634\u0627\u0621', lastOnline: '\u0622\u062e\u0631 \u0627\u062a\u0635\u0627\u0644', neverOnline: '\u0623\u0628\u062f\u064b\u0627 (\u0622\u0645\u0646)', onlineAfterKey: '\u062a\u0645 \u0627\u0644\u0643\u0634\u0641 \u0639\u0646 \u0627\u062a\u0635\u0627\u0644 \u0628\u0639\u062f \u0627\u0644\u0625\u0646\u0634\u0627\u0621', accountXpub: 'xpub \u0627\u0644\u062d\u0633\u0627\u0628',
     showXpubQR: '\u0639\u0631\u0636 QR xpub', lockBtn: '\u0642\u0641\u0644', mainnet: '\u0627\u0644\u0634\u0628\u0643\u0629 \u0627\u0644\u0631\u0626\u064a\u0633\u064a\u0629', testnet: '\u0634\u0628\u0643\u0629 \u0627\u0644\u0627\u062e\u062a\u0628\u0627\u0631',
     diceTitle: '\u062a\u0648\u0644\u064a\u062f \u0645\u0641\u062a\u0627\u062d \u0628\u0627\u0644\u0646\u0631\u062f', diceDesc: '\u0627\u0631\u0645\u0650 \u0646\u0631\u062f\u064b\u0627 \u062d\u0642\u064a\u0642\u064a\u064b\u0627 \u0648\u0627\u0646\u0642\u0631 \u0627\u0644\u0646\u062a\u064a\u062c\u0629.',
     progress: '\u0627\u0644\u062a\u0642\u062f\u0645', undoLast: '\u062a\u0631\u0627\u062c\u0639', cancel: '\u0625\u0644\u063a\u0627\u0621', ok: '\u0645\u0648\u0627\u0641\u0642',
@@ -1433,7 +1479,7 @@ const I18N = {
     warning: '\u062a\u062d\u0630\u064a\u0631:', clearDataWarning: '\u0645\u0633\u062d \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0645\u062a\u0635\u0641\u062d \u0633\u064a\u062d\u0630\u0641 \u0627\u0644\u0645\u0641\u062a\u0627\u062d \u0627\u0644\u0645\u0634\u0641\u0631 \u0646\u0647\u0627\u0626\u064a\u064b\u0627. \u0627\u062d\u0641\u0638 \u0639\u0628\u0627\u0631\u0629 \u0627\u0644\u0628\u0630\u0631\u0629 \u062f\u0627\u0626\u0645\u064b\u0627 \u0628\u062f\u0648\u0646 \u0627\u062a\u0635\u0627\u0644.',
     autoLock: '\u0642\u0641\u0644 \u062a\u0644\u0642\u0627\u0626\u064a:', autoLockDesc: '\u062a\u064f\u0645\u0633\u062d \u0627\u0644\u0645\u0641\u0627\u062a\u064a\u062d \u0645\u0646 \u0627\u0644\u0630\u0627\u0643\u0631\u0629 \u0628\u0639\u062f 5 \u062f\u0642\u0627\u0626\u0642 \u0645\u0646 \u0627\u0644\u062e\u0645\u0648\u0644.',
     storageEncKey: '\u0645\u0641\u062a\u0627\u062d \u062e\u0627\u0635 \u0645\u0634\u0641\u0631 (AES-256-GCM)', storageXpub: '\u0645\u0641\u062a\u0627\u062d \u0639\u0627\u0645 \u0645\u0645\u062a\u062f \u0644\u0644\u062d\u0633\u0627\u0628', storageFp: '\u0628\u0635\u0645\u0629 BIP-32',
-    storageNet: '\u0625\u0639\u062f\u0627\u062f \u0627\u0644\u0634\u0628\u0643\u0629 (main/test)', storageLang: '\u0644\u063a\u0629 \u0627\u0644\u0648\u0627\u062c\u0647\u0629', storageSeedLang: '\u0644\u063a\u0629 \u0639\u0628\u0627\u0631\u0629 \u0627\u0644\u0628\u0630\u0631\u0629',
+    storageNet: '\u0625\u0639\u062f\u0627\u062f \u0627\u0644\u0634\u0628\u0643\u0629 (main/test)', storageLang: '\u0644\u063a\u0629 \u0627\u0644\u0648\u0627\u062c\u0647\u0629', storageSeedLang: '\u0644\u063a\u0629 \u0639\u0628\u0627\u0631\u0629 \u0627\u0644\u0628\u0630\u0631\u0629', storageKeyCreated: '\u062a\u0627\u0631\u064a\u062e \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u0645\u0641\u062a\u0627\u062d', storageLastOnline: '\u062a\u0627\u0631\u064a\u062e \u0627\u0643\u062a\u0634\u0627\u0641 \u0627\u0644\u0634\u0628\u0643\u0629',
     guideTitle: '\u062f\u0644\u064a\u0644 \u0627\u0644\u062a\u062b\u0628\u064a\u062a', guideDesc: '\u062b\u0628\u0651\u062a BitClutch Signer \u0643\u062a\u0637\u0628\u064a\u0642 \u063a\u064a\u0631 \u0645\u062a\u0635\u0644\u060c \u062b\u0645 \u0641\u0639\u0651\u0644 \u0648\u0636\u0639 \u0627\u0644\u0637\u064a\u0631\u0627\u0646 \u0642\u0628\u0644 \u0627\u0644\u0627\u0633\u062a\u062e\u062f\u0627\u0645.',
     detected: '\u062a\u0645 \u0627\u0644\u0643\u0634\u0641', accountXpubTitle: 'xpub \u0627\u0644\u062d\u0633\u0627\u0628',
     guideIosSafari: '<strong>\u0627\u0644\u062a\u062b\u0628\u064a\u062a \u0643\u062a\u0637\u0628\u064a\u0642 \u063a\u064a\u0631 \u0645\u062a\u0635\u0644:</strong><ol><li>\u0627\u0641\u062a\u062d \u0647\u0630\u0647 \u0627\u0644\u0635\u0641\u062d\u0629 \u0641\u064a <strong>Safari</strong></li><li>\u0627\u0636\u063a\u0637 \u0639\u0644\u0649 \u0632\u0631 <strong>Share</strong> (\u0645\u0631\u0628\u0639 \u0628\u0647 \u0633\u0647\u0645)</li><li>\u0645\u0631\u0631 \u0644\u0644\u0623\u0633\u0641\u0644 \u0648\u0627\u0636\u063a\u0637 \u0639\u0644\u0649 <strong>"Add to Home Screen"</strong></li><li>\u0627\u0636\u063a\u0637 \u0639\u0644\u0649 <strong>"Add"</strong> \u0641\u064a \u0627\u0644\u0632\u0627\u0648\u064a\u0629 \u0627\u0644\u0639\u0644\u0648\u064a\u0629 \u0627\u0644\u064a\u0645\u0646\u0649</li></ol><strong>\u062a\u0641\u0639\u064a\u0644 \u0648\u0636\u0639 \u0627\u0644\u0637\u064a\u0631\u0627\u0646:</strong><ol><li>\u0627\u0633\u062d\u0628 \u0644\u0644\u0623\u0633\u0641\u0644 \u0645\u0646 \u0627\u0644\u0632\u0627\u0648\u064a\u0629 \u0627\u0644\u0639\u0644\u0648\u064a\u0629 \u0627\u0644\u064a\u0645\u0646\u0649 (\u0623\u0648 \u0644\u0644\u0623\u0639\u0644\u0649 \u0645\u0646 \u0627\u0644\u0623\u0633\u0641\u0644 \u0641\u064a \u0623\u062c\u0647\u0632\u0629 iPhone \u0627\u0644\u0623\u0642\u062f\u0645)</li><li>\u0627\u0636\u063a\u0637 \u0639\u0644\u0649 \u0623\u064a\u0642\u0648\u0646\u0629 <strong>airplane icon</strong> \u0644\u0644\u062a\u0641\u0639\u064a\u0644</li><li>\u062a\u0623\u0643\u062f \u0645\u0646 \u0623\u0646 Wi-Fi \u0648Bluetooth \u0645\u063a\u0644\u0642\u0627\u0646 \u0623\u064a\u0636\u064b\u0627</li></ol>',
@@ -1451,11 +1497,11 @@ const I18N = {
   nl: {
     unlocked: 'Ontgrendeld', locked: 'Vergrendeld',
     tabKey: 'Sleutel', tabSign: 'Ondertekenen', tabSettings: 'Instellingen',
-    createKeys: 'Maak je sleutels',
+    createKeys: 'Maak je sleutel',
     setupDesc: 'Genereer een nieuwe sleutel met fysieke entropie,<br>of importeer een bestaande herstelzin.',
     diceBtn: 'Dobbelsteen (99 worpen)', coinBtn: 'Munt (256 worpen)', importBtn: 'Herstelzin importeren',
     enterPassphrase: 'Voer wachtwoord in om te ontgrendelen', passphrase: 'Wachtwoord', unlock: 'Ontgrendelen', wrongPassphrase: 'Verkeerd wachtwoord.',
-    yourKey: 'Jouw sleutel', network: 'Netwerk', fingerprint: 'Vingerafdruk', accountXpub: 'Account-xpub',
+    yourKey: 'Jouw sleutel', network: 'Netwerk', fingerprint: 'Vingerafdruk', keyCreated: 'Aangemaakt', lastOnline: 'Laatst online', neverOnline: 'Nooit (veilig)', onlineAfterKey: 'Online gedetecteerd na aanmaak', accountXpub: 'Account-xpub',
     showXpubQR: 'xpub QR tonen', lockBtn: 'Vergrendelen', mainnet: 'Mainnet', testnet: 'Testnet',
     diceTitle: 'Dobbelsteen sleutelgeneratie', diceDesc: 'Gooi een echte dobbelsteen en tik het resultaat.',
     progress: 'Voortgang', undoLast: 'Ongedaan maken', cancel: 'Annuleren', ok: 'OK',
@@ -1510,7 +1556,7 @@ const I18N = {
     warning: 'Waarschuwing:', clearDataWarning: 'Browsergegevens wissen verwijdert je versleutelde sleutel permanent. Bewaar je herstelzin altijd offline.',
     autoLock: 'Automatisch vergrendelen:', autoLockDesc: 'Sleutels worden na 5 minuten inactiviteit uit het geheugen gewist.',
     storageEncKey: 'Versleutelde priv\u00e9sleutel (AES-256-GCM)', storageXpub: 'Uitgebreide openbare accountsleutel', storageFp: 'BIP-32-vingerafdruk',
-    storageNet: 'Netwerkinstelling (main/test)', storageLang: 'Interfacetaal', storageSeedLang: 'Herstelzintaal',
+    storageNet: 'Netwerkinstelling (main/test)', storageLang: 'Interfacetaal', storageSeedLang: 'Herstelzintaal', storageKeyCreated: 'Aanmaakdatum sleutel', storageLastOnline: 'Netwerkdetectiedatum',
     guideTitle: 'Installatiegids', guideDesc: 'Installeer BitClutch Signer als offline app en zet de vliegtuigmodus aan voor gebruik.',
     detected: 'Gedetecteerd', accountXpubTitle: 'Account-xpub',
     guideIosSafari: '<strong>Installeer als offline app:</strong><ol><li>Open deze pagina in <strong>Safari</strong></li><li>Tik op de <strong>Share</strong>-knop (vierkant met pijl)</li><li>Scroll naar beneden en tik op <strong>"Add to Home Screen"</strong></li><li>Tik op <strong>"Add"</strong> rechtsboven</li></ol><strong>Vliegtuigmodus inschakelen:</strong><ol><li>Veeg omlaag vanuit de rechterbovenhoek (of omhoog vanaf de onderkant bij oudere iPhones)</li><li>Tik op het <strong>airplane icon</strong> om in te schakelen</li><li>Controleer of Wi-Fi en Bluetooth ook UIT zijn</li></ol>',
@@ -1528,11 +1574,11 @@ const I18N = {
   hi: {
     unlocked: '\u0905\u0928\u0932\u0949\u0915', locked: '\u0932\u0949\u0915',
     tabKey: '\u0915\u0941\u0902\u091c\u0940', tabSign: '\u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930', tabSettings: '\u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938',
-    createKeys: '\u0905\u092a\u0928\u0940 \u0915\u0941\u0902\u091c\u093f\u092f\u093e\u0901 \u092c\u0928\u093e\u090f\u0902',
+    createKeys: '\u0905\u092a\u0928\u0940 \u0915\u0941\u0902\u091c\u0940 \u092c\u0928\u093e\u090f\u0902',
     setupDesc: '\u092d\u094c\u0924\u093f\u0915 \u090f\u0902\u091f\u094d\u0930\u0949\u092a\u0940 \u0938\u0947 \u0928\u0908 \u0915\u0941\u0902\u091c\u0940 \u092c\u0928\u093e\u090f\u0902,<br>\u092f\u093e \u092e\u094c\u091c\u0942\u0926\u093e \u0938\u0940\u0921 \u0935\u093e\u0915\u094d\u092f\u093e\u0902\u0936 \u0906\u092f\u093e\u0924 \u0915\u0930\u0947\u0902\u0964',
     diceBtn: '\u092a\u093e\u0938\u093e (99 \u092c\u093e\u0930)', coinBtn: '\u0938\u093f\u0915\u094d\u0915\u093e (256 \u092c\u093e\u0930)', importBtn: '\u0938\u0940\u0921 \u0935\u093e\u0915\u094d\u092f\u093e\u0902\u0936 \u0906\u092f\u093e\u0924 \u0915\u0930\u0947\u0902',
     enterPassphrase: '\u0905\u0928\u0932\u0949\u0915 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u092a\u093e\u0938\u0935\u0930\u094d\u0921 \u0926\u0930\u094d\u091c \u0915\u0930\u0947\u0902', passphrase: '\u092a\u093e\u0938\u0935\u0930\u094d\u0921', unlock: '\u0905\u0928\u0932\u0949\u0915', wrongPassphrase: '\u0917\u0932\u0924 \u092a\u093e\u0938\u0935\u0930\u094d\u0921\u0964',
-    yourKey: '\u0906\u092a\u0915\u0940 \u0915\u0941\u0902\u091c\u0940', network: '\u0928\u0947\u091f\u0935\u0930\u094d\u0915', fingerprint: '\u092b\u093f\u0902\u0917\u0930\u092a\u094d\u0930\u093f\u0902\u091f', accountXpub: '\u0916\u093e\u0924\u093e xpub',
+    yourKey: '\u0906\u092a\u0915\u0940 \u0915\u0941\u0902\u091c\u0940', network: '\u0928\u0947\u091f\u0935\u0930\u094d\u0915', fingerprint: '\u092b\u093f\u0902\u0917\u0930\u092a\u094d\u0930\u093f\u0902\u091f', keyCreated: '\u092c\u0928\u093e\u092f\u093e \u0917\u092f\u093e', lastOnline: '\u0905\u0902\u0924\u093f\u092e \u0911\u0928\u0932\u093e\u0907\u0928', neverOnline: '\u0915\u092d\u0940 \u0928\u0939\u0940\u0902 (\u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924)', onlineAfterKey: '\u0915\u0941\u0902\u091c\u0940 \u092c\u0928\u093e\u0928\u0947 \u0915\u0947 \u092c\u093e\u0926 \u0911\u0928\u0932\u093e\u0907\u0928 \u092a\u0924\u093e \u091a\u0932\u093e', accountXpub: '\u0916\u093e\u0924\u093e xpub',
     showXpubQR: 'xpub QR \u0926\u093f\u0916\u093e\u090f\u0902', lockBtn: '\u0932\u0949\u0915', mainnet: '\u092e\u0947\u0928\u0928\u0947\u091f', testnet: '\u091f\u0947\u0938\u094d\u091f\u0928\u0947\u091f',
     diceTitle: '\u092a\u093e\u0938\u0947 \u0938\u0947 \u0915\u0941\u0902\u091c\u0940 \u092c\u0928\u093e\u0928\u093e', diceDesc: '\u0905\u0938\u0932\u0940 \u092a\u093e\u0938\u093e \u092b\u0947\u0902\u0915\u0947\u0902 \u0914\u0930 \u092a\u0930\u093f\u0923\u093e\u092e \u091f\u0948\u092a \u0915\u0930\u0947\u0902\u0964',
     progress: '\u092a\u094d\u0930\u0917\u0924\u093f', undoLast: '\u0935\u093e\u092a\u0938', cancel: '\u0930\u0926\u094d\u0926', ok: '\u0920\u0940\u0915',
@@ -1587,7 +1633,7 @@ const I18N = {
     warning: '\u091a\u0947\u0924\u093e\u0935\u0928\u0940:', clearDataWarning: '\u092c\u094d\u0930\u093e\u0909\u091c\u0930 \u0921\u0947\u091f\u093e \u0938\u093e\u092b \u0915\u0930\u0928\u0947 \u0938\u0947 \u090f\u0928\u094d\u0915\u094d\u0930\u093f\u092a\u094d\u091f\u0947\u0921 \u0915\u0941\u0902\u091c\u0940 \u0938\u094d\u0925\u093e\u092f\u0940 \u0930\u0942\u092a \u0938\u0947 \u0939\u091f \u091c\u093e\u090f\u0917\u0940\u0964 \u0938\u0940\u0921 \u0939\u092e\u0947\u0936\u093e \u0911\u092b\u0932\u093e\u0907\u0928 \u092c\u0948\u0915\u0905\u092a \u0930\u0916\u0947\u0902\u0964',
     autoLock: '\u0911\u091f\u094b \u0932\u0949\u0915:', autoLockDesc: '5 \u092e\u093f\u0928\u091f \u0928\u093f\u0937\u094d\u0915\u094d\u0930\u093f\u092f\u0924\u093e \u0915\u0947 \u092c\u093e\u0926 \u0915\u0941\u0902\u091c\u093f\u092f\u093e\u0902 \u092e\u0947\u092e\u094b\u0930\u0940 \u0938\u0947 \u0939\u091f\u093e \u0926\u0940 \u091c\u093e\u0924\u0940 \u0939\u0948\u0902\u0964',
     storageEncKey: '\u090f\u0928\u094d\u0915\u094d\u0930\u093f\u092a\u094d\u091f\u0947\u0921 \u0928\u093f\u091c\u0940 \u0915\u0941\u0902\u091c\u0940 (AES-256-GCM)', storageXpub: '\u0916\u093e\u0924\u093e \u0935\u093f\u0938\u094d\u0924\u093e\u0930\u093f\u0924 \u0938\u093e\u0930\u094d\u0935\u091c\u0928\u093f\u0915 \u0915\u0941\u0902\u091c\u0940', storageFp: 'BIP-32 \u092b\u093f\u0902\u0917\u0930\u092a\u094d\u0930\u093f\u0902\u091f',
-    storageNet: '\u0928\u0947\u091f\u0935\u0930\u094d\u0915 \u0938\u0947\u091f\u093f\u0902\u0917 (main/test)', storageLang: '\u0907\u0902\u091f\u0930\u092b\u0947\u0938 \u092d\u093e\u0937\u093e', storageSeedLang: '\u0938\u0940\u0921 \u092d\u093e\u0937\u093e',
+    storageNet: '\u0928\u0947\u091f\u0935\u0930\u094d\u0915 \u0938\u0947\u091f\u093f\u0902\u0917 (main/test)', storageLang: '\u0907\u0902\u091f\u0930\u092b\u0947\u0938 \u092d\u093e\u0937\u093e', storageSeedLang: '\u0938\u0940\u0921 \u092d\u093e\u0937\u093e', storageKeyCreated: '\u0915\u0941\u0902\u091c\u0940 \u0928\u093f\u0930\u094d\u092e\u093e\u0923 \u0924\u093f\u0925\u093f', storageLastOnline: '\u0928\u0947\u091f\u0935\u0930\u094d\u0915 \u092a\u0924\u093e \u0924\u093f\u0925\u093f',
     guideTitle: '\u0938\u094d\u0925\u093e\u092a\u0928\u093e \u0917\u093e\u0907\u0921', guideDesc: 'BitClutch Signer \u0915\u094b \u0911\u092b\u0932\u093e\u0907\u0928 \u0910\u092a \u0915\u0947 \u0930\u0942\u092a \u092e\u0947\u0902 \u0907\u0902\u0938\u094d\u091f\u0949\u0932 \u0915\u0930\u0947\u0902, \u092b\u093f\u0930 \u0909\u092a\u092f\u094b\u0917 \u0938\u0947 \u092a\u0939\u0932\u0947 \u090f\u092f\u0930\u092a\u094d\u0932\u0947\u0928 \u092e\u094b\u0921 \u091a\u093e\u0932\u0942 \u0915\u0930\u0947\u0902\u0964',
     detected: '\u092a\u0939\u091a\u093e\u0928\u093e \u0917\u092f\u093e', accountXpubTitle: '\u0916\u093e\u0924\u093e xpub',
     guideIosSafari: '<strong>\u0911\u092b\u0932\u093e\u0907\u0928 \u0910\u092a \u0915\u0947 \u0930\u0942\u092a \u092e\u0947\u0902 \u0907\u0902\u0938\u094d\u091f\u0949\u0932 \u0915\u0930\u0947\u0902:</strong><ol><li>\u092f\u0939 \u092a\u0947\u091c <strong>Safari</strong> \u092e\u0947\u0902 \u0916\u094b\u0932\u0947\u0902</li><li><strong>Share</strong> \u092c\u091f\u0928 (\u0924\u0940\u0930 \u0935\u093e\u0932\u093e \u092c\u0949\u0915\u094d\u0938) \u092a\u0930 \u091f\u0948\u092a \u0915\u0930\u0947\u0902</li><li>\u0928\u0940\u091a\u0947 \u0938\u094d\u0915\u094d\u0930\u094b\u0932 \u0915\u0930\u0947\u0902 \u0914\u0930 <strong>"Add to Home Screen"</strong> \u092a\u0930 \u091f\u0948\u092a \u0915\u0930\u0947\u0902</li><li>\u0926\u093e\u0908\u0902 \u0913\u0930 \u090a\u092a\u0930 <strong>"Add"</strong> \u092a\u0930 \u091f\u0948\u092a \u0915\u0930\u0947\u0902</li></ol><strong>\u090f\u092f\u0930\u092a\u094d\u0932\u0947\u0928 \u092e\u094b\u0921 \u091a\u093e\u0932\u0942 \u0915\u0930\u0947\u0902:</strong><ol><li>\u0926\u093e\u0908\u0902 \u0913\u0930 \u0915\u094b\u0928\u0947 \u0938\u0947 \u0928\u0940\u091a\u0947 \u0938\u094d\u0935\u093e\u0907\u092a \u0915\u0930\u0947\u0902 (\u092f\u093e \u092a\u0941\u0930\u093e\u0928\u0947 iPhone \u092a\u0930 \u0928\u0940\u091a\u0947 \u0938\u0947 \u090a\u092a\u0930)</li><li>\u091a\u093e\u0932\u0942 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f <strong>airplane icon</strong> \u092a\u0930 \u091f\u0948\u092a \u0915\u0930\u0947\u0902</li><li>\u0938\u0941\u0928\u093f\u0936\u094d\u091a\u093f\u0924 \u0915\u0930\u0947\u0902 \u0915\u093f Wi-Fi \u0914\u0930 Bluetooth \u092d\u0940 \u092c\u0902\u0926 \u0939\u0948\u0902</li></ol>',
@@ -1696,12 +1742,11 @@ async function init() {
   // Try restoring from backup stores if localStorage was cleared
   await restoreFromBackupStores();
 
-  // Check if key exists
-  const hasKey = !!localStorage.getItem('signer-key');
-  S.screen = hasKey ? 'unlock' : 'setup';
+  // Check if keys exist
+  S.screen = hasAnyKeys() ? 'home' : 'setup';
   render();
 
-  // Activity tracker for auto-lock
+  // Activity tracker for auto-lock (clears xprv from memory)
   ['click', 'touchstart', 'keydown'].forEach((evt) =>
     document.addEventListener(evt, () => { S.lastActivity = Date.now(); }, true)
   );
@@ -1728,10 +1773,14 @@ function lock() {
   S.bmsResult = null;
   S.parsedTx = null;
   S.signedPsbtBytes = null;
+  S.pendingAction = null;
   stopCamera();
-  S.screen = localStorage.getItem('signer-key') ? 'unlock' : 'setup';
-  S.tab = 'key';
-  render();
+  // No screen change — home is always accessible. Only clear xprv.
+  // If we were mid-signing, go back to scan
+  if (S.screen === 'enter-pass' || S.screen === 'confirm-tx' || S.screen === 'confirm-bms') {
+    S.screen = 'scan';
+    S.tab = 'sign';
+  }
 }
 
 function stopCamera() {
@@ -1742,10 +1791,10 @@ function stopCamera() {
 
 // ── Tab switching ──────────────────────────────────
 function switchTab(tab) {
-  if (!S.xprv && tab === 'sign') return; // signing requires unlock
+  if (tab === 'sign' && !hasAnyKeys()) return; // need at least one key to sign
   S.tab = tab;
   stopCamera();
-  if (tab === 'key') S.screen = S.xprv ? 'home' : (localStorage.getItem('signer-key') ? 'unlock' : 'setup');
+  if (tab === 'key') S.screen = hasAnyKeys() ? 'home' : 'setup';
   else if (tab === 'sign') S.screen = 'scan';
   else if (tab === 'settings') S.screen = 'settings-main';
   render();
@@ -1788,12 +1837,13 @@ function detectPlatform() {
 
 // ── Event Delegation (no inline handlers) ─────────
 const ACTIONS = {
-  startDice, startCoin, startImport, doUnlock, showXpubQR,
-  lock, undoDice, undoCoin, cancelKeygen,
+  startDice, startCoin, startImport, showXpubQR,
+  undoDice, undoCoin, cancelKeygen,
   confirmMnemonic, doImport, doSetPass,
   cancelScan, rejectTx, approveTx, finishSign,
   approveBms, rejectBms, copyBmsSig,
-  toggleNetwork, confirmDeleteKey, downloadBackup, importBackupFile, cycleTheme,
+  toggleNetwork, downloadBackup, importBackupFile, cycleTheme,
+  doSignWithPass, cancelEnterPass,
   addDice(arg) { addDice(parseInt(arg, 10)); },
   addCoin(arg) { addCoin(parseInt(arg, 10)); },
   goHome() { S.screen = 'home'; render(); },
@@ -1809,6 +1859,12 @@ const ACTIONS = {
     body.style.maxHeight = isOpen ? body.scrollHeight + 'px' : '0';
   },
   bmsDone() { S.bmsResult = null; S.screen = 'scan'; render(); },
+  renameKey(id) { renameKey(id); },
+  confirmDeleteKeyById(id) { confirmDeleteKeyById(id); },
+  downloadBackupById(id) { downloadBackupById(id); },
+  verifyPassById(id) { verifyPassphraseForKey(id); },
+  toggleXpub(id) { S.expandedKeyId = S.expandedKeyId === id ? null : id; render(); },
+  addNewKey() { warnIfOnline(() => { S.screen = 'setup'; render(); }); },
   setImportCount(arg) { S.importWordCount = parseInt(arg, 10); S.screen = 'import'; render(); },
   setImportLang(arg) { S.seedLang = arg; localStorage.setItem('signer-seed-lang', arg); S.screen = 'import'; render(); },
   switchMnemonicLang(arg) {
@@ -2003,40 +2059,58 @@ async function opfsDel(name) {
   } catch (_) { /* ignore */ }
 }
 
-// Write all signer keys to IndexedDB + OPFS (called after localStorage write)
-async function persistToBackupStores(encKey) {
-  const xpub = localStorage.getItem('signer-xpub') || '';
-  const fp = localStorage.getItem('signer-fp') || '';
-  const net = localStorage.getItem('signer-network') || '';
-  const bundle = JSON.stringify({ encKey, xpub, fp, net });
+// Write multi-key bundle to IndexedDB + OPFS (called after localStorage write)
+async function persistMultiKeyBundle() {
+  const keys = localStorage.getItem('signer-keys') || '[]';
+  const bundle = JSON.stringify({ keys });
   await Promise.allSettled([
     idbSet('signer-bundle', bundle),
     opfsWrite('signer-bundle.json', bundle),
   ]);
 }
 
+// Legacy single-key backup store write (kept for migration support)
+async function persistToBackupStores(encKey) {
+  await persistMultiKeyBundle();
+}
+
 // On startup: if localStorage is empty, try restoring from IndexedDB or OPFS
 async function restoreFromBackupStores() {
-  if (localStorage.getItem('signer-key')) return false; // already have key
+  // If we already have multi-key data, nothing to restore
+  if (localStorage.getItem('signer-keys')) return false;
+  // Also check legacy single-key format
+  if (localStorage.getItem('signer-key')) return false;
   let bundle = await idbGet('signer-bundle');
   if (!bundle) bundle = await opfsRead('signer-bundle.json');
   if (!bundle) return false;
   try {
     const data = JSON.parse(bundle);
-    if (!data.encKey) return false;
-    localStorage.setItem('signer-key', data.encKey);
-    if (data.xpub) localStorage.setItem('signer-xpub', data.xpub);
-    if (data.fp) localStorage.setItem('signer-fp', data.fp);
-    if (data.net) localStorage.setItem('signer-network', data.net);
-    return true;
+    // Multi-key format
+    if (data.keys) {
+      localStorage.setItem('signer-keys', data.keys);
+      return true;
+    }
+    // Legacy single-key format
+    if (data.encKey) {
+      localStorage.setItem('signer-key', data.encKey);
+      if (data.xpub) localStorage.setItem('signer-xpub', data.xpub);
+      if (data.fp) localStorage.setItem('signer-fp', data.fp);
+      if (data.net) localStorage.setItem('signer-network', data.net);
+      return true;
+    }
+    return false;
   } catch (_) { return false; }
 }
 
-// Intentional delete: remove key from ALL stores
+// Intentional delete: remove ALL data from ALL stores
 async function removeFromAllStores() {
+  localStorage.removeItem('signer-keys');
+  // Also remove legacy keys if any
   localStorage.removeItem('signer-key');
   localStorage.removeItem('signer-xpub');
   localStorage.removeItem('signer-fp');
+  localStorage.removeItem('signer-key-created');
+  localStorage.removeItem('signer-last-online');
   await Promise.allSettled([
     idbDel('signer-bundle'),
     opfsDel('signer-bundle.json'),
@@ -2059,37 +2133,78 @@ async function decryptStored(passphrase) {
   return decryptData(localStorage.getItem('signer-key'), passphrase);
 }
 
+// ── Multi-Key Storage Helpers ─────────────────────
+function generateKeyId() { return 'k_' + Date.now(); }
+
+function getKeys() {
+  try {
+    const raw = localStorage.getItem('signer-keys');
+    return raw ? JSON.parse(raw) : [];
+  } catch (_) { return []; }
+}
+
+function setKeys(keys) {
+  localStorage.setItem('signer-keys', JSON.stringify(keys));
+}
+
+// Get signing key: explicit signingKeyId, or first key as fallback
+function getSigningKey() {
+  const keys = getKeys();
+  if (!keys.length) return null;
+  if (S.signingKeyId) return keys.find(k => k.id === S.signingKeyId) || keys[0];
+  return keys[0];
+}
+
+// Find key by fingerprint (for PSBT auto-matching)
+function findKeyByFingerprint(fp) {
+  return getKeys().find(k => k.fp === fp) || null;
+}
+
+function nextKeyNumber() {
+  const keys = getKeys();
+  // Find the highest existing "Key #N" number and increment
+  let max = 0;
+  const re = /^Key #(\d+)$/;
+  for (const k of keys) {
+    const m = k.name && k.name.match(re);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  return Math.max(max, keys.length) + 1;
+}
+
+function addKey(obj) {
+  // Assign default name if empty
+  if (!obj.name) obj.name = t('keyN') + nextKeyNumber();
+  const keys = getKeys();
+  keys.push(obj);
+  setKeys(keys);
+}
+
+function removeKey(id) {
+  let keys = getKeys();
+  keys = keys.filter(k => k.id !== id);
+  setKeys(keys);
+  if (S.signingKeyId === id) S.signingKeyId = null;
+}
+
+function updateKey(id, patch) {
+  const keys = getKeys();
+  const idx = keys.findIndex(k => k.id === id);
+  if (idx >= 0) Object.assign(keys[idx], patch);
+  setKeys(keys);
+}
+
+function hasAnyKeys() { return getKeys().length > 0; }
+
+// (Migration removed — no existing users with single-key format)
+
 // ── Encrypted Backup ──────────────────────────────
 function downloadBackup() {
-  const encKey = localStorage.getItem('signer-key');
-  if (!encKey) return;
-  const xpub = localStorage.getItem('signer-xpub') || '';
-  const fpRaw = localStorage.getItem('signer-fp') || '0';
-  const fpHex = parseInt(fpRaw, 10).toString(16).padStart(8, '0');
-  const net = localStorage.getItem('signer-network') || 'main';
-  const backup = {
-    type: 'bitclutch-signer-backup',
-    version: APP_VERSION,
-    created: new Date().toISOString(),
-    fingerprint: fpHex,
-    network: net,
-    encryptedKey: encKey,
-    xpub: xpub,
-  };
-  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `bitclutch-backup-${fpHex}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  const keys = getKeys();
+  if (keys.length === 1) downloadBackupById(keys[0].id);
 }
 
 function importBackupFile() {
-  if (localStorage.getItem('signer-key')) {
-    alert(t('backupExists'));
-    return;
-  }
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.json';
@@ -2104,13 +2219,28 @@ function importBackupFile() {
           alert(t('invalidBackup'));
           return;
         }
-        localStorage.setItem('signer-key', backup.encryptedKey);
-        if (backup.xpub) localStorage.setItem('signer-xpub', backup.xpub);
-        if (backup.fingerprint) localStorage.setItem('signer-fp', parseInt(backup.fingerprint, 16).toString());
-        if (backup.network) localStorage.setItem('signer-network', backup.network);
-        persistToBackupStores(backup.encryptedKey);
-        S.network = backup.network || 'test';
-        S.screen = 'unlock';
+        const fp = backup.fingerprint ? parseInt(backup.fingerprint, 16) : 0;
+        // Check for duplicate (same fingerprint + xpub)
+        const existing = getKeys();
+        if (existing.some(k => k.fp === fp && k.xpub === (backup.xpub || ''))) {
+          alert(t('keyAlreadyExists'));
+          return;
+        }
+        const id = generateKeyId();
+        const keyObj = {
+          id,
+          name: backup.name || '',
+          encryptedKey: backup.encryptedKey,
+          xpub: backup.xpub || '',
+          fp,
+          network: backup.network || 'main',
+          seedLang: backup.seedLang || 'en',
+          createdAt: Date.now(),
+          lastOnline: null,
+        };
+        addKey(keyObj);
+        persistMultiKeyBundle();
+        S.screen = 'home';
         render();
         alert(t('backupRestored'));
       } catch (e) {
@@ -2223,18 +2353,28 @@ function updateBanner() {
   const text = $('banner-text');
   if (!banner || !text) return;
   const online = navigator.onLine;
-  const hasKey = !!localStorage.getItem('signer-key');
+  const hasKeys = hasAnyKeys();
   // Three states: offline (green), online+noKey (yellow warn), online+hasKey (red danger)
   banner.classList.remove('online', 'offline', 'warn');
   if (!online) {
     banner.classList.add('offline');
     text.textContent = t('bannerOffline');
-  } else if (!hasKey) {
+  } else if (!hasKeys) {
     banner.classList.add('warn');
     text.textContent = t('bannerWarn');
   } else {
     banner.classList.add('online');
     text.textContent = t('bannerOnline');
+    // Update lastOnline for ALL keys
+    const now = Date.now();
+    const keys = getKeys();
+    keys.forEach(k => { k.lastOnline = now; });
+    setKeys(keys);
+    // Re-render home to show updated timestamp & compromise warning
+    if (S.screen === 'home') {
+      const el = $screen();
+      if (el) el.innerHTML = renderHome();
+    }
   }
 }
 window.addEventListener('online', updateBanner);
@@ -2246,10 +2386,11 @@ function render() {
   // Update banner (network status + language)
   updateBanner();
 
-  // Update lock badge
+  // Update lock badge — show key count
   const badge = $('lock-badge');
-  if (S.xprv) {
-    badge.textContent = t('unlocked');
+  const keyCount = getKeys().length;
+  if (keyCount > 0) {
+    badge.textContent = `${keyCount} ${keyCount === 1 ? t('tabKey') : t('tabKey')}`;
     badge.style.color = 'var(--success)';
     badge.style.borderColor = 'var(--success)';
   } else {
@@ -2272,7 +2413,6 @@ function render() {
   // Render screen
   switch (S.screen) {
     case 'setup': el.innerHTML = renderSetup(); break;
-    case 'unlock': el.innerHTML = renderUnlock(); break;
     case 'home': el.innerHTML = renderHome(); break;
     case 'dice': el.innerHTML = renderDice(); break;
     case 'coin': el.innerHTML = renderCoin(); break;
@@ -2281,6 +2421,7 @@ function render() {
     case 'import': el.innerHTML = renderImport(); setupImportInputs(); break;
     case 'scan': el.innerHTML = renderScan(); startCamera(); break;
     case 'confirm-tx': el.innerHTML = renderConfirmTx(); break;
+    case 'enter-pass': el.innerHTML = renderEnterPass(); break;
     case 'show-qr': el.innerHTML = renderShowQR(); break;
     case 'confirm-bms': el.innerHTML = renderConfirmBms(); break;
     case 'bms-result': el.innerHTML = renderBmsResult(); showBmsQR(); break;
@@ -2312,44 +2453,75 @@ function renderSetup() {
     `;
 }
 
-function renderUnlock() {
-  return `
-    <div class="text-center mt-20">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" style="margin: 0 auto 16px">
-        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-        <path d="M7 11V7a5 5 0 0110 0v4"/>
-      </svg>
-      <h2 style="font-size:18px; margin-bottom:16px">${t('enterPassphrase')}</h2>
-    </div>
-    <div class="gap-12">
-      <input type="password" id="unlock-pass" class="input" placeholder="${t('passphrase')}" autocomplete="off"
-        data-enter-action="doUnlock">
-      <button class="btn btn-primary" data-action="doUnlock">${t('unlock')}</button>
-      <p id="unlock-error" class="text-muted text-center" style="color:var(--danger)"></p>
-    </div>`;
-}
-
 function renderHome() {
-  const xpub = localStorage.getItem('signer-xpub') || '';
-  const fpNum = parseInt(localStorage.getItem('signer-fp') || '0', 10);
-  const fp = fpNum ? fpNum.toString(16).padStart(8, '0') : '';
-  const net = S.network === 'main' ? t('mainnet') : t('testnet');
-  return `
-    <div class="card">
-      <div class="card-title">${t('yourKey')}</div>
-      <div class="tx-row"><span class="tx-label">${t('network')}</span><span class="tx-value">${net}</span></div>
-      <div class="tx-row"><span class="tx-label">${t('fingerprint')}</span><span class="tx-value">${fp}</span></div>
-      <div style="margin-top:12px">
-        <span class="label">${t('accountXpub')}</span>
-        <div class="tx-address">${escapeHtml(xpub)}</div>
+  const keys = getKeys();
+  if (!keys.length) {
+    return `
+      <div class="text-center mt-20">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin: 0 auto 16px">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/>
+        </svg>
+        <p class="text-muted">${t('noKeysYet')}</p>
       </div>
-      <button class="btn btn-secondary mt-16" data-action="showXpubQR">${t('showXpubQR')}</button>
-      <button class="btn btn-secondary mt-16" data-action="downloadBackup">${t('exportBackup')}</button>
-    </div>
+      <div class="gap-12 mt-16">
+        <button class="btn btn-primary" data-action="addNewKey">${t('addNewKey')}</button>
+        <button class="btn btn-secondary" data-action="importBackupFile">${t('restoreBackup')}</button>
+      </div>`;
+  }
+
+  let html = '';
+  keys.forEach((k, idx) => {
+    const fpHex = k.fp ? k.fp.toString(16).padStart(8, '0') : '?';
+    const net = k.network === 'main' ? t('mainnet') : t('testnet');
+    const createdStr = k.createdAt ? new Date(k.createdAt).toLocaleString() : '';
+    const compromised = k.createdAt && k.lastOnline && k.lastOnline > k.createdAt;
+    const expanded = S.expandedKeyId === k.id;
+    const displayName = k.name || (t('keyN') + '?');
+
+    let lastOnlineStr = '';
+    if (!k.lastOnline || (k.createdAt && k.lastOnline <= k.createdAt)) {
+      lastOnlineStr = `<span style="color:var(--success)">${t('neverOnline')}</span>`;
+    } else {
+      lastOnlineStr = `<span style="color:var(--danger)">${new Date(k.lastOnline).toLocaleString()}</span>`;
+    }
+
+    html += `
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div class="card-title" style="margin:0;flex:1">${escapeHtml(displayName)}</div>
+          <button class="btn btn-secondary" style="width:auto;min-height:28px;padding:2px 8px;font-size:11px" data-action="renameKey" data-arg="${k.id}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><path d="M17 3a2.85 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          </button>
+        </div>
+        <div class="tx-row"><span class="tx-label">${t('network')}</span><span class="tx-value">${net}</span></div>
+        <div class="tx-row"><span class="tx-label">${t('fingerprint')}</span><span class="tx-value" style="font-family:var(--mono)">${fpHex}</span></div>
+        ${createdStr ? `<div class="tx-row"><span class="tx-label">${t('keyCreated')}</span><span class="tx-value" style="font-size:12px">${createdStr}</span></div>` : ''}
+        <div class="tx-row"><span class="tx-label">${t('lastOnline')}</span><span class="tx-value" style="font-size:12px">${lastOnlineStr}</span></div>
+        ${compromised ? `<div class="security-banner" style="border-left-color:var(--danger);margin-top:8px"><strong style="color:var(--danger)">${t('onlineAfterKey')}</strong></div>` : ''}
+        <div style="margin-top:12px">
+          <button class="btn btn-secondary" style="width:100%;min-height:44px" data-action="showXpubQR" data-arg="${k.id}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><rect x="19" y="14" width="2" height="2"/><rect x="14" y="19" width="2" height="2"/><rect x="19" y="19" width="2" height="2"/></svg>
+            ${t('accountXpub')}
+          </button>
+        </div>
+        ${expanded ? `<div style="margin-top:8px"><div class="tx-address">${escapeHtml(k.xpub || '')}</div></div>` : ''}
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-secondary" style="flex:1;min-height:40px;font-size:13px" data-action="downloadBackupById" data-arg="${k.id}">${t('exportBackup')}</button>
+          <button class="btn btn-secondary" style="flex:1;min-height:40px;font-size:13px" data-action="verifyPassById" data-arg="${k.id}">${t('verifyPass')}</button>
+        </div>
+        <div style="margin-top:8px">
+          <button class="btn btn-secondary" style="width:100%;min-height:40px;font-size:13px;color:var(--danger);border-color:var(--danger)" data-action="confirmDeleteKeyById" data-arg="${k.id}">${t('deleteKey')}</button>
+        </div>
+      </div>`;
+  });
+
+  html += `
     <div class="gap-12">
-      <button class="btn btn-secondary" data-action="lock">${t('lockBtn')}</button>
-      <button class="btn btn-danger" data-action="confirmDeleteKey">${t('deleteKey')}</button>
+      <button class="btn btn-primary" data-action="addNewKey">${t('addNewKey')}</button>
+      <button class="btn btn-secondary" data-action="importBackupFile">${t('restoreBackup')}</button>
     </div>`;
+
+  return html;
 }
 
 function renderDice() {
@@ -2734,6 +2906,28 @@ function renderConfirmTx() {
     </div>`;
 }
 
+function renderEnterPass() {
+  const ak = getSigningKey();
+  if (!ak) return `<p class="text-muted text-center mt-20">${t('noKeyToSave')}</p>`;
+  const fpHex = ak.fp ? ak.fp.toString(16).padStart(8, '0') : '?';
+  const displayName = ak.name || t('keyN') + '?';
+  return `
+    <div class="card">
+      <div class="card-title">${t('enterPassToSign')}</div>
+      <div class="tx-row"><span class="tx-label">${t('tabKey')}</span><span class="tx-value">${escapeHtml(displayName)}</span></div>
+      <div class="tx-row"><span class="tx-label">${t('fingerprint')}</span><span class="tx-value">${fpHex}</span></div>
+      <div class="gap-12 mt-16">
+        <input type="password" id="sign-pass" class="input" placeholder="${t('passphrase')}" autocomplete="off"
+          data-enter-action="doSignWithPass">
+        <p id="sign-pass-error" class="text-muted text-center" style="color:var(--danger)"></p>
+      </div>
+    </div>
+    <div style="display:flex; gap:12px">
+      <button class="btn btn-secondary" style="flex:1" data-action="cancelEnterPass">${t('cancel')}</button>
+      <button class="btn btn-success" style="flex:1" data-action="doSignWithPass">${t('sign')}</button>
+    </div>`;
+}
+
 function renderShowQR() {
   if (!S.signedPsbtBytes) return `<p class="text-muted text-center mt-20">${t('noSignedData')}</p>`;
   return `
@@ -2749,19 +2943,25 @@ function renderShowQR() {
 function renderConfirmBms() {
   const req = S.bmsRequest;
   if (!req) return `<p class="text-muted text-center mt-20">${t('noBmsRequest')}</p>`;
-  const hdkey = HDKey.fromExtendedKey(S.xprv);
-  const chainNode = hdkey.deriveChild(0);
-  const child = chainNode.deriveChild(req.index || 0);
-  const addr = p2wpkh(child.publicKey).address;
-  if (child.privateKey) child.privateKey.fill(0);
-  if (chainNode.privateKey) chainNode.privateKey.fill(0);
+  // Preview: show addresses for all keys (user will pick at signing time)
+  const keys = getKeys();
+  let addrPreview = '';
+  if (keys.length === 1 && keys[0].xpub) {
+    try {
+      const hdkey = HDKey.fromExtendedKey(keys[0].xpub);
+      const child = hdkey.deriveChild(0).deriveChild(req.index || 0);
+      addrPreview = p2wpkh(child.publicKey).address;
+    } catch { addrPreview = '?'; }
+  } else {
+    addrPreview = t('selectKeyAtSign');
+  }
   return `
     <div class="card">
       <div class="card-title">${t('confirmBms')}</div>
       <div class="security-banner mb-12">${t('reviewMessage')}</div>
       <div class="tx-row"><span class="tx-label">${t('type')}</span><span class="tx-value">${t('bmsType')}</span></div>
       <div class="tx-row"><span class="tx-label">${t('index')}</span><span class="tx-value">${req.index || 0}</span></div>
-      <div class="tx-row"><span class="tx-label">${t('address')}</span><span class="tx-value" style="font-size:11px;word-break:break-all">${escapeHtml(addr)}</span></div>
+      <div class="tx-row"><span class="tx-label">${t('address')}</span><span class="tx-value" style="font-size:11px;word-break:break-all">${escapeHtml(addrPreview)}</span></div>
       <div style="margin-top:12px">
         <span class="label">${t('message')}</span>
         <div class="tx-address" style="padding:10px;background:var(--surface-hover);border-radius:8px">${escapeHtml(req.message)}</div>
@@ -2938,9 +3138,7 @@ function setupDropVerify(zone) {
 
 function renderSecurity() {
   const keys = [
-    { key: 'signer-key', descKey: 'storageEncKey' },
-    { key: 'signer-xpub', descKey: 'storageXpub' },
-    { key: 'signer-fp', descKey: 'storageFp' },
+    { key: 'signer-keys', descKey: 'storageKeys' },
     { key: 'signer-network', descKey: 'storageNet' },
     { key: 'signer-lang', descKey: 'storageLang' },
     { key: 'signer-seed-lang', descKey: 'storageSeedLang' },
@@ -3057,7 +3255,7 @@ function warnIfOnline(proceed) {
 function startDice() { warnIfOnline(() => { S.diceEntropy = []; S.screen = 'dice'; render(); }); }
 function startCoin() { warnIfOnline(() => { S.coinEntropy = []; S.screen = 'coin'; render(); }); }
 function startImport() { warnIfOnline(() => { S.screen = 'import'; render(); }); }
-function cancelKeygen() { S.diceEntropy = []; S.coinEntropy = []; S.screen = localStorage.getItem('signer-key') ? 'unlock' : 'setup'; render(); }
+function cancelKeygen() { S.diceEntropy = []; S.coinEntropy = []; S.screen = hasAnyKeys() ? 'home' : 'setup'; render(); }
 
 function addDice(n) {
   S.diceEntropy.push(n);
@@ -3109,10 +3307,22 @@ async function doSetPass() {
   if (!result) { errEl.textContent = t('noKeyToSave'); return; }
 
   try {
-    await encryptAndStore(result.xprv, p1.value);
-    localStorage.setItem('signer-xpub', result.xpub);
-    localStorage.setItem('signer-fp', result.fingerprint);
-    S.xprv = result.xprv;
+    const encrypted = await encryptData(result.xprv, p1.value);
+    const id = generateKeyId();
+    const keyObj = {
+      id,
+      name: '',
+      encryptedKey: encrypted,
+      xpub: result.xpub,
+      fp: result.fingerprint,
+      network: S.network,
+      seedLang: S.seedLang,
+      createdAt: Date.now(),
+      lastOnline: null,
+    };
+    addKey(keyObj);
+    await persistMultiKeyBundle();
+    S.xprv = null; // don't keep xprv in memory
     S.tempMnemonic = null;
     S.tempEntropy = null;
     S.tempKeyResult = null;
@@ -3144,20 +3354,7 @@ async function doImport() {
   }
 }
 
-async function doUnlock() {
-  const passEl = $('unlock-pass');
-  const errEl = $('unlock-error');
-  if (!passEl) return;
-  try {
-    S.xprv = await decryptStored(passEl.value);
-    S.screen = 'home';
-    render();
-  } catch {
-    errEl.textContent = t('wrongPassphrase');
-    passEl.value = '';
-    passEl.focus();
-  }
-}
+// (doUnlock removed — passphrase is now requested at signing time only)
 
 // ── Camera Scanning ────────────────────────────────
 
@@ -3295,8 +3492,8 @@ function onPsbtReceived(psbtBytes) {
 }
 
 function parseTxDetails(tx, psbtBytes) {
-  const fpStr = localStorage.getItem('signer-fp') || '0';
-  const myFp = parseInt(fpStr, 10);
+  // Extract fingerprints from BIP32 derivation in inputs
+  const fpSet = new Set();
   const inputs = [];
   let inputTotal = 0;
 
@@ -3304,6 +3501,11 @@ function parseTxDetails(tx, psbtBytes) {
     const inp = tx.getInput(i);
     const amount = Number(inp.witnessUtxo?.amount || 0n);
     inputTotal += amount;
+    if (inp.bip32Derivation) {
+      for (const [, deriv] of inp.bip32Derivation) {
+        if (deriv.fingerprint) fpSet.add(deriv.fingerprint);
+      }
+    }
     inputs.push({
       index: i,
       txid: inp.txid ? bytesToHex(inp.txid) : '?',
@@ -3311,6 +3513,16 @@ function parseTxDetails(tx, psbtBytes) {
       amount,
     });
   }
+
+  // Auto-match key by fingerprint
+  let matchedKey = null;
+  for (const fp of fpSet) {
+    matchedKey = findKeyByFingerprint(fp);
+    if (matchedKey) break;
+  }
+  const myFp = matchedKey ? matchedKey.fp : 0;
+  // Set signingKeyId for this PSBT session
+  if (matchedKey) S.signingKeyId = matchedKey.id;
 
   const outputs = [];
   let outputTotal = 0;
@@ -3348,17 +3560,11 @@ function rejectTx() {
 }
 
 function approveTx() {
-  if (!S.xprv || !S.parsedTx) return;
-  try {
-    const signed = signPsbt(S.parsedTx.psbtBytes, S.xprv);
-    S.signedPsbtBytes = signed;
-    S.parsedTx = null;
-    S.screen = 'show-qr';
-    render();
-    displaySignedQR();
-  } catch (e) {
-    showAlert(t('signingFailed'), e.message);
-  }
+  if (!S.parsedTx) return;
+  if (!hasAnyKeys()) return;
+  S.pendingAction = 'sign-tx';
+  S.screen = 'enter-pass';
+  render();
 }
 
 function signPsbt(psbtBytes, xprv) {
@@ -3498,17 +3704,46 @@ function onBmsReceived(json) {
 }
 
 function approveBms() {
-  if (!S.xprv || !S.bmsRequest) return;
-  try {
-    const { message, index } = S.bmsRequest;
-    const result = signBms(message, S.xprv, index);
-    S.bmsResult = { message, signature: result.signature, address: result.address };
-    S.bmsRequest = null;
-    S.screen = 'bms-result';
+  if (!S.bmsRequest) return;
+  if (!hasAnyKeys()) return;
+  const keys = getKeys();
+  if (keys.length === 1) {
+    // Single key: auto-select
+    S.signingKeyId = keys[0].id;
+    S.pendingAction = 'sign-bms';
+    S.screen = 'enter-pass';
     render();
-  } catch (e) {
-    showAlert(t('signingFailed'), e.message);
+  } else {
+    // Multiple keys: show picker modal
+    showBmsKeyPicker(keys);
   }
+}
+
+function showBmsKeyPicker(keys) {
+  const keyIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>`;
+  const bodyHtml = keys.map((k, idx) => {
+    const fpHex = k.fp ? k.fp.toString(16).padStart(8, '0') : '?';
+    const name = k.name || (t('keyN') + '?');
+    return `<button class="btn btn-secondary" style="width:100%;min-height:48px;text-align:left;padding:10px 14px;margin-bottom:6px;font-size:13px" data-bms-key-id="${k.id}"><strong>${escapeHtml(name)}</strong><br><span class="text-muted" style="font-size:11px">${fpHex}</span></button>`;
+  }).join('');
+  showModal({
+    icon: keyIcon,
+    title: t('selectKeyForBms'),
+    body: bodyHtml,
+    buttons: [{ text: t('cancel'), cls: 'btn-secondary' }],
+  });
+  // Attach click handlers to key buttons
+  setTimeout(() => {
+    document.querySelectorAll('[data-bms-key-id]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        S.signingKeyId = btn.dataset.bmsKeyId;
+        S.pendingAction = 'sign-bms';
+        document.getElementById('modal-overlay').classList.remove('show');
+        S.screen = 'enter-pass';
+        render();
+      });
+    });
+  }, 50);
 }
 
 function rejectBms() {
@@ -3532,17 +3767,195 @@ function copyBmsSig() {
   }).catch(() => {});
 }
 
+// ── Multi-key signing flow ────────────────────────
+
+async function doSignWithPass() {
+  const passEl = $('sign-pass');
+  const errEl = $('sign-pass-error');
+  if (!passEl) return;
+  const ak = getSigningKey();
+  if (!ak) { if (errEl) errEl.textContent = t('noKeyToSave'); return; }
+
+  try {
+    const xprv = await decryptData(ak.encryptedKey, passEl.value);
+    // Sign based on pending action
+    if (S.pendingAction === 'sign-tx' && S.parsedTx) {
+      const signed = signPsbt(S.parsedTx.psbtBytes, xprv);
+      // Zero xprv immediately
+      S.xprv = null;
+      S.signedPsbtBytes = signed;
+      S.parsedTx = null;
+      S.pendingAction = null;
+      S.screen = 'show-qr';
+      render();
+      displaySignedQR();
+    } else if (S.pendingAction === 'sign-bms' && S.bmsRequest) {
+      const { message, index } = S.bmsRequest;
+      const result = signBms(message, xprv, index);
+      S.xprv = null;
+      S.bmsResult = { message, signature: result.signature, address: result.address };
+      S.bmsRequest = null;
+      S.pendingAction = null;
+      S.screen = 'bms-result';
+      render();
+    }
+  } catch {
+    if (errEl) errEl.textContent = t('passWrong');
+    passEl.value = '';
+    passEl.focus();
+  }
+}
+
+function cancelEnterPass() {
+  S.pendingAction = null;
+  // Go back to the previous screen
+  if (S.parsedTx) { S.screen = 'confirm-tx'; }
+  else if (S.bmsRequest) { S.screen = 'confirm-bms'; }
+  else { S.screen = 'scan'; }
+  render();
+}
+
+function renameKey(keyId) {
+  const keys = getKeys();
+  const k = keys.find(k => k.id === keyId);
+  if (!k) return;
+  const currentName = k.name || '';
+
+  const editIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>`;
+  showModal({
+    icon: editIcon,
+    title: t('renameKeyTitle'),
+    body: `<input type="text" id="rename-input" class="input" value="${escapeHtml(currentName)}" placeholder="${t('keyN')}..." autocomplete="off" style="margin-top:8px">`,
+    buttons: [
+      { text: t('cancel'), cls: 'btn-secondary' },
+      { text: t('save'), cls: 'btn-primary', action: () => {
+        const inp = document.getElementById('rename-input');
+        const newName = inp ? inp.value.trim() : '';
+        updateKey(keyId, { name: newName });
+        persistMultiKeyBundle();
+        render();
+      }},
+    ],
+  });
+  // Focus input and select all
+  setTimeout(() => {
+    const inp = document.getElementById('rename-input');
+    if (inp) { inp.focus(); inp.select(); }
+  }, 50);
+}
+
+async function verifyPassphraseForKey(keyId) {
+  const keys = getKeys();
+  const k = keys.find(k => k.id === keyId);
+  if (!k) return;
+  const fpHex = k.fp ? k.fp.toString(16).padStart(8, '0') : '?';
+  const displayName = k.name || t('keyN') + '?';
+
+  showModal({
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>`,
+    title: `${t('verifyPass')} — ${escapeHtml(displayName)}`,
+    body: '',
+    buttons: [{ text: t('cancel'), cls: 'btn-secondary' }],
+  });
+
+  // Inject passphrase input into modal body
+  const bodyEl = document.getElementById('modal-body');
+  bodyEl.innerHTML = `
+    <input type="password" id="verify-pass-input" class="input" placeholder="${t('passphrase')}" autocomplete="off" style="margin-top:12px">
+    <p id="verify-pass-result" style="margin-top:8px;text-align:center"></p>
+    <button class="btn btn-primary" id="verify-pass-btn" style="margin-top:8px">${t('verifyPass')}</button>
+  `;
+  const inp = document.getElementById('verify-pass-input');
+  const btn = document.getElementById('verify-pass-btn');
+  const res = document.getElementById('verify-pass-result');
+  inp.focus();
+  const doVerify = async () => {
+    try {
+      await decryptData(k.encryptedKey, inp.value);
+      res.style.color = 'var(--success)';
+      res.textContent = t('passCorrect');
+    } catch {
+      res.style.color = 'var(--danger)';
+      res.textContent = t('passWrong');
+      inp.value = '';
+      inp.focus();
+    }
+  };
+  btn.addEventListener('click', doVerify);
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') doVerify(); });
+}
+
+function confirmDeleteKeyById(keyId) {
+  const warnIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+  showModal({
+    icon: warnIcon,
+    title: t('deleteKeyConfirm1'),
+    body: '',
+    buttons: [
+      { text: t('cancel'), cls: 'btn-secondary' },
+      { text: t('deleteKey'), cls: 'btn-danger', action: () => {
+        showModal({
+          icon: warnIcon,
+          title: t('deleteKeyConfirm2'),
+          body: '',
+          buttons: [
+            { text: t('cancel'), cls: 'btn-secondary' },
+            { text: t('deleteKey'), cls: 'btn-danger', action: async () => {
+              removeKey(keyId);
+              await persistMultiKeyBundle();
+              S.screen = hasAnyKeys() ? 'home' : 'setup';
+              render();
+            }},
+          ],
+        });
+      }},
+    ],
+  });
+}
+
+function downloadBackupById(keyId) {
+  const keys = getKeys();
+  const k = keys.find(k => k.id === keyId);
+  if (!k) return;
+  const fpHex = k.fp ? k.fp.toString(16).padStart(8, '0') : '????????';
+  const backup = {
+    type: 'bitclutch-signer-backup',
+    version: APP_VERSION,
+    created: new Date().toISOString(),
+    fingerprint: fpHex,
+    network: k.network || 'main',
+    encryptedKey: k.encryptedKey,
+    xpub: k.xpub || '',
+    name: k.name || '',
+    seedLang: k.seedLang || 'en',
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bitclutch-backup-${fpHex}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  alert(t('backupSaved'));
+}
+
 function escapeHtml(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // ── xpub QR ────────────────────────────────────────
 
-function showXpubQR() {
-  const xpub = localStorage.getItem('signer-xpub');
+function showXpubQR(keyId) {
+  // If called with a keyId argument, use that key; otherwise use first key
+  let xpub;
+  const keys = getKeys();
+  if (keyId) {
+    const k = keys.find(k => k.id === keyId);
+    xpub = k ? k.xpub : null;
+  } else {
+    xpub = keys.length ? keys[0].xpub : null;
+  }
   if (!xpub) return;
-  // Encode xpub only (not JSON) — smaller QR, much easier for cameras to scan.
-  // Frontend's handleQrScanned() accepts both plain xpub and JSON format.
   const el = $screen();
   el.innerHTML = `
     <div class="card text-center">
@@ -3586,7 +3999,7 @@ function showModal({ icon, title, body, buttons }) {
   const overlay = document.getElementById('modal-overlay');
   document.getElementById('modal-icon').innerHTML = icon || '';
   document.getElementById('modal-title').textContent = title || '';
-  document.getElementById('modal-body').textContent = body || '';
+  document.getElementById('modal-body').innerHTML = body || '';
   const actDiv = document.getElementById('modal-actions');
   actDiv.innerHTML = '';
   buttons.forEach(b => {
@@ -3634,4 +4047,5 @@ function confirmDeleteKey() {
 }
 
 // ── Start ──────────────────────────────────────────
+console.log('[Signer] app.js loaded — v2026-02-27-multikey');
 init();
