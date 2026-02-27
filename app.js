@@ -3422,7 +3422,8 @@ function handleQRData(data) {
     try {
       accepted = S.urDecoder.receivePart(lower);
     } catch (e) {
-      updateScanStatus('UR error: ' + (e.message || e));
+      stopCamera();
+      updateScanStatus('UR part error: ' + (e.message || e));
       return;
     }
 
@@ -3434,14 +3435,12 @@ function handleQRData(data) {
           stopCamera();
           onPsbtReceived(payload);
         } catch (e) {
-          updateScanStatus('CBOR decode error: ' + (e.message || e));
-          S.urDecoder = new URDecoder();
-          S._lastURPart = null;
+          stopCamera();
+          updateScanStatus('CBOR error: ' + (e.message || e));
         }
       } else {
-        updateScanStatus(t('urFailed'));
-        S.urDecoder = new URDecoder();
-        S._lastURPart = null;
+        stopCamera();
+        updateScanStatus('UR decode failed: ' + S.urDecoder.resultError());
       }
     } else {
       // Show progress for multi-part
