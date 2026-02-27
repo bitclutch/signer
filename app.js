@@ -1651,6 +1651,10 @@ const I18N = {
 };
 
 function t(key) { return (I18N[S.lang] || I18N.en)[key] || I18N.en[key] || key; }
+function fmtDate(ts) {
+  if (!ts) return '';
+  return new Date(ts).toLocaleString(S.lang, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 const SEED_LANGS = [
   { id: 'en', label: 'English', wordlist: englishWordlist },
   { id: 'ko', label: '한국어', wordlist: koreanWordlist },
@@ -2473,7 +2477,7 @@ function renderHome() {
   keys.forEach((k, idx) => {
     const fpHex = k.fp ? k.fp.toString(16).padStart(8, '0') : '?';
     const net = k.network === 'main' ? t('mainnet') : t('testnet');
-    const createdStr = k.createdAt ? new Date(k.createdAt).toLocaleString() : '';
+    const createdStr = fmtDate(k.createdAt);
     const compromised = k.createdAt && k.lastOnline && k.lastOnline > k.createdAt;
     const expanded = S.expandedKeyId === k.id;
     const displayName = k.name || (t('keyN') + '?');
@@ -2482,7 +2486,7 @@ function renderHome() {
     if (!k.lastOnline || (k.createdAt && k.lastOnline <= k.createdAt)) {
       lastOnlineStr = `<span style="color:var(--success)">${t('neverOnline')}</span>`;
     } else {
-      lastOnlineStr = `<span style="color:var(--danger)">${new Date(k.lastOnline).toLocaleString()}</span>`;
+      lastOnlineStr = `<span style="color:var(--danger)">${fmtDate(k.lastOnline)}</span>`;
     }
 
     html += `
@@ -2871,7 +2875,7 @@ function renderConfirmTx() {
     const btc = (sats / 1e8).toFixed(8).replace(/0+$/, '').replace(/\.$/, '');
     return btc + ' BTC';
   };
-  const fmtSats = (sats) => sats.toLocaleString() + ' sat';
+  const fmtSats = (sats) => sats.toLocaleString(S.lang) + ' sat';
 
   let outputsHtml = '';
   for (const o of tx.outputs) {
@@ -2999,7 +3003,11 @@ function renderBmsResult() {
 function renderSettings() {
   const net = S.network === 'main' ? t('mainnet') : t('testnet');
   const themeLabel = S.theme === 'dark' ? t('themeDark') : S.theme === 'light' ? t('themeLight') : t('themeAuto');
-  const themeIcon = S.theme === 'dark' ? '\u263E' : S.theme === 'light' ? '\u2600' : '\u25D0';
+  const themeIcon = S.theme === 'dark'
+    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>'
+    : S.theme === 'light'
+    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
+    : '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18V4a8 8 0 0 1 0 16z"/></svg>';
   return `
     <div class="card">
       <div class="card-title">${t('settings')}</div>
