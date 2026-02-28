@@ -274,6 +274,7 @@ const I18N = {
     enterPassToSign: 'Enter passphrase to sign',
     passCorrect: 'Passphrase is correct!',
     passWrong: 'Wrong passphrase.',
+    signFailed: 'Signing failed',
     verifyPass: 'Verify Passphrase',
     keyAlreadyExists: 'A key with this fingerprint already exists.',
     keyN: 'Key #',
@@ -476,6 +477,7 @@ const I18N = {
     enterPassToSign: '서명을 위해 비밀번호를 입력하세요',
     passCorrect: '비밀번호가 올바릅니다!',
     passWrong: '비밀번호가 틀렸습니다.',
+    signFailed: '서명 실패',
     verifyPass: '비밀번호 확인',
     keyAlreadyExists: '이 지문의 키가 이미 존재합니다.',
     keyN: '키 #',
@@ -3633,6 +3635,7 @@ function approveTx() {
 function signPsbt(psbtBytes, xprv) {
   const tx = Transaction.fromPSBT(psbtBytes);
   const hdkey = HDKey.fromExtendedKey(xprv);
+  let signed = 0;
 
   for (let i = 0; i < tx.inputsLength; i++) {
     const inp = tx.getInput(i);
@@ -3651,6 +3654,7 @@ function signPsbt(psbtBytes, xprv) {
           const targetPub = pubkeyBytes instanceof Uint8Array ? pubkeyBytes : new Uint8Array(pubkeyBytes);
           if (childPub.length === targetPub.length && childPub.every((b, j) => b === targetPub[j])) {
             tx.signIdx(child.privateKey, i);
+            signed++;
             if (child.privateKey) child.privateKey.fill(0);
             if (chainNode.privateKey) chainNode.privateKey.fill(0);
             break;
@@ -3662,7 +3666,11 @@ function signPsbt(psbtBytes, xprv) {
     }
   }
 
-  tx.finalize();
+  if (signed === 0) throw new Error('No matching key found in PSBT');
+
+  // Try to finalize (works for single-sig or when all sigs are present).
+  // For multisig/miniscript, finalize may fail — return partially-signed PSBT.
+  try { tx.finalize(); } catch { /* partial sig is OK for multisig workflows */ }
   return tx.toPSBT();
 }
 
@@ -3839,9 +3847,21 @@ async function doSignWithPass() {
   const ak = getSigningKey();
   if (!ak) { if (errEl) errEl.textContent = t('noKeyToSave'); return; }
 
+  // Step 1: Decrypt — passphrase error if this fails
+  console.log('[doSignWithPass] key:', ak.id, 'enc prefix:', ak.encryptedKey?.slice(0,12), 'signingKeyId:', S.signingKeyId);
+  let xprv;
   try {
-    const xprv = await decryptData(ak.encryptedKey, passEl.value);
-    // Sign based on pending action
+    xprv = await decryptData(ak.encryptedKey, passEl.value);
+  } catch (e) {
+    console.error('[doSignWithPass] decrypt failed:', ak.id, e);
+    if (errEl) errEl.textContent = t('passWrong') + ` [${ak.id}]`;
+    passEl.value = '';
+    passEl.focus();
+    return;
+  }
+
+  // Step 2: Sign — show actual error if signing fails
+  try {
     if (S.pendingAction === 'sign-tx' && S.parsedTx) {
       const signed = signPsbt(S.parsedTx.psbtBytes, xprv);
       // Zero xprv immediately
@@ -3862,10 +3882,9 @@ async function doSignWithPass() {
       S.screen = 'bms-result';
       render();
     }
-  } catch {
-    if (errEl) errEl.textContent = t('passWrong');
-    passEl.value = '';
-    passEl.focus();
+  } catch (e) {
+    S.xprv = null;
+    if (errEl) errEl.textContent = t('signFailed') + ': ' + (e.message || e);
   }
 }
 
@@ -3934,9 +3953,10 @@ async function verifyPassphraseForKey(keyId) {
   inp.focus();
   const doVerify = async () => {
     try {
+      console.log('[verifyPass] key:', k.id, 'enc prefix:', k.encryptedKey?.slice(0,12));
       await decryptData(k.encryptedKey, inp.value);
       res.style.color = 'var(--success)';
-      res.textContent = t('passCorrect');
+      res.textContent = t('passCorrect') + ` [${k.id}]`;
     } catch {
       res.style.color = 'var(--danger)';
       res.textContent = t('passWrong');
