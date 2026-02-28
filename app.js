@@ -3668,9 +3668,8 @@ function signPsbt(psbtBytes, xprv) {
 
   if (signed === 0) throw new Error('No matching key found in PSBT');
 
-  // Try to finalize (works for single-sig or when all sigs are present).
-  // For multisig/miniscript, finalize may fail — return partially-signed PSBT.
-  try { tx.finalize(); } catch { /* partial sig is OK for multisig workflows */ }
+  // Return partially-signed PSBT (do NOT finalize here).
+  // Server-side finalize handles Miniscript witness construction.
   return tx.toPSBT();
 }
 
@@ -3694,6 +3693,7 @@ function displaySignedQR() {
       const ur = UR.fromBuffer(S.signedPsbtBytes);
       const encoder = new UREncoder(ur, 100); // 100 bytes per fragment
       S.qrEncoder = encoder;
+      const totalParts = encoder.fragmentsLength;
 
       let frameNum = 0;
       function showNextFrame() {
@@ -3701,7 +3701,8 @@ function displaySignedQR() {
         container.innerHTML = '';
         container.appendChild(generateQRCanvas(part.toUpperCase(), 280));
         frameNum++;
-        if (info) info.textContent = `${t('frame')} ${frameNum} (${t('fountainKeepShowing')})`;
+        const cyclePos = ((frameNum - 1) % totalParts) + 1;
+        if (info) info.textContent = `${t('frame')} ${cyclePos} / ${totalParts}`;
       }
       showNextFrame();
       S.qrAnimId = setInterval(showNextFrame, 300);
